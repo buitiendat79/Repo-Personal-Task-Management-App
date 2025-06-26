@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { supabase } from "../../api/supabaseClient";
 import { setUser } from "../auth/AuthSlice";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 
 export default function LoginPage() {
   const dispatch = useDispatch();
@@ -13,13 +14,14 @@ export default function LoginPage() {
   const [remember, setRemember] = useState(false);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const validate = () => {
     const newErrors = {};
-    if (!email) newErrors.email = "Email là bắt buộc";
+    if (!email) newErrors.email = "Vui lòng nhập email";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       newErrors.email = "Email không hợp lệ";
-    if (!password) newErrors.password = "Mật khẩu là bắt buộc";
+    if (!password) newErrors.password = "Vui lòng nhập mật khẩu";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -35,7 +37,11 @@ export default function LoginPage() {
     });
 
     if (error) {
-      setErrors({ general: error.message });
+      if (error.message.includes("Invalid login credentials")) {
+        setErrors({ general: "Email hoặc mật khẩu không đúng" });
+      } else {
+        setErrors({ general: error.message });
+      }
       setLoading(false);
       return;
     }
@@ -59,35 +65,54 @@ export default function LoginPage() {
       >
         <h2 className="text-2xl font-bold mb-6 text-center">Đăng nhập</h2>
 
-        {errors.general && (
-          <p className="text-red-500 mb-4 text-sm text-center">
-            {errors.general}
-          </p>
-        )}
-
         <div className="mb-4">
-          <label className="block mb-1">Email</label>
+          <label htmlFor="email" className="block mb-1">
+            Email
+          </label>
           <input
+            id="email"
             type="email"
             className="w-full border px-3 py-2 rounded"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            aria-describedby="email-error"
           />
           {errors.email && (
-            <p className="text-red-500 text-sm">{errors.email}</p>
+            <p id="email-error" className="text-red-500 text-sm">
+              {errors.email}
+            </p>
           )}
         </div>
 
         <div className="mb-4">
-          <label className="block mb-1">Mật khẩu</label>
-          <input
-            type="password"
-            className="w-full border px-3 py-2 rounded"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <label htmlFor="password" className="block mb-1">
+            Mật khẩu
+          </label>
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              className="w-full border px-3 py-2 rounded pr-12"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              aria-describedby="password-error"
+            />
+            {password && (
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-600 transition"
+                tabIndex={-1}
+                title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              >
+                {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
+              </button>
+            )}
+          </div>
           {errors.password && (
-            <p className="text-red-500 text-sm">{errors.password}</p>
+            <p id="password-error" className="text-red-500 text-sm mt-1">
+              {errors.password}
+            </p>
           )}
         </div>
 
@@ -108,6 +133,12 @@ export default function LoginPage() {
             Quên mật khẩu?
           </Link>
         </div>
+
+        {errors.general && (
+          <p className="text-red-500 mb-4 text-sm text-center">
+            {errors.general}
+          </p>
+        )}
 
         <button
           type="submit"
