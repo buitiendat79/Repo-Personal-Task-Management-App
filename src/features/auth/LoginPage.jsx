@@ -62,6 +62,7 @@ export default function LoginPage() {
       <form
         onSubmit={handleSubmit}
         className="bg-white p-8 rounded-xl shadow-md w-full max-w-md"
+        data-testid="form-login"
       >
         <h2 className="text-2xl font-bold mb-6 text-center">Đăng nhập</h2>
 
@@ -150,7 +151,7 @@ export default function LoginPage() {
 
         <p className="text-center text-sm mt-4">
           Chưa có tài khoản?{" "}
-          <Link to="/register" className="text-blue-600 underline">
+          <Link to="/" className="text-blue-600 underline">
             Đăng ký
           </Link>
         </p>

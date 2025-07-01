@@ -6,7 +6,6 @@ import { supabase } from "../../api/supabaseClient";
 import { Provider } from "react-redux";
 import { store } from "../../app/store";
 
-// Mock supabase
 vi.mock("../../api/supabaseClient", () => ({
   supabase: {
     auth: {
@@ -54,17 +53,18 @@ describe("LoginPage", () => {
 
   test("báo lỗi email không hợp lệ", async () => {
     renderLogin();
+
     const emailInput = screen.getByLabelText(/email/i);
-    const btn = screen.getByRole("button", { name: /đăng nhập/i });
+    const passwordInput = screen.getByLabelText(/mật khẩu/i);
 
+    await userEvent.clear(emailInput);
     await userEvent.type(emailInput, "invalid-email");
-    fireEvent.click(btn);
+    await userEvent.clear(passwordInput);
+    await userEvent.type(passwordInput, "12345678");
 
-    expect(
-      await screen.findByText((content) =>
-        content.toLowerCase().replace(/\s+/g, "").includes("emailkhônghợp lệ")
-      )
-    ).toBeInTheDocument();
+    fireEvent.submit(screen.getByTestId("form-login"));
+
+    expect(await screen.findByText("Email không hợp lệ")).toBeInTheDocument();
   });
 
   test("submit thành công khi nhập đúng", async () => {

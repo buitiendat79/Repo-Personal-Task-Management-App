@@ -6,12 +6,11 @@ import { Provider } from "react-redux";
 import { BrowserRouter } from "react-router-dom";
 import { store } from "./../../app/store";
 
-// 👇 mock supabase
-vi.mock("../../api/supabaseClient", () => ({
+vi.mock("./../../api/supabaseClient", () => ({
   supabase: {
     from: vi.fn(() => ({
       select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockResolvedValue({ data: [] }), // giả lập chưa có email
+      eq: vi.fn().mockResolvedValue({ data: [] }),
       insert: vi.fn().mockResolvedValue({ error: null }),
     })),
     auth: {
