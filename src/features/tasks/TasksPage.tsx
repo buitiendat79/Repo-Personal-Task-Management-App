@@ -1,13 +1,25 @@
 import { useState } from "react";
 import TaskForm from "../../components/TaskForm";
 import { supabase } from "../../api/supabaseClient";
-import { useAuth } from "../../hooks/useAuth";
+import { useAuth } from "./../../hooks/useAuth";
+
+interface TaskInput {
+  title: string;
+  description: string;
+  dueDate: string;
+  content: string;
+}
 
 export default function TasksPage() {
   const [showForm, setShowForm] = useState(false);
   const { user } = useAuth();
 
-  const handleSaveTask = async ({ title, description, dueDate, content }) => {
+  const handleSaveTask = async ({
+    title,
+    description,
+    dueDate,
+    content,
+  }: TaskInput) => {
     if (!user) {
       alert("Bạn chưa đăng nhập.");
       return;

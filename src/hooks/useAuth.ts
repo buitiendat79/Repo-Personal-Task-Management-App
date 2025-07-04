@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../api/supabaseClient";
+import type { Session } from "@supabase/supabase-js";
 
 export function useAuth() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<Session["user"] | null>(null);
 
   useEffect(() => {
-    const session = supabase.auth.getSession().then(({ data }) => {
+    const fetchSession = async () => {
+      const { data } = await supabase.auth.getSession();
       setUser(data.session?.user || null);
-    });
+    };
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
@@ -19,5 +21,6 @@ export function useAuth() {
       listener.subscription.unsubscribe();
     };
   }, []);
+
   return { user };
 }

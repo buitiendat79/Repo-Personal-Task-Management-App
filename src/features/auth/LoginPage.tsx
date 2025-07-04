@@ -1,47 +1,55 @@
-import { useState } from "react";
+import { useState, FormEvent, ChangeEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { supabase } from "../../api/supabaseClient";
 import { setUser } from "../auth/AuthSlice";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 
+interface Errors {
+  email?: string;
+  password?: string;
+  general?: string;
+}
+
 export default function LoginPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [remember, setRemember] = useState<boolean>(false);
+  const [errors, setErrors] = useState<Errors>({});
+  const [loading, setLoading] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
 
-  const validate = () => {
-    const newErrors = {};
+  const validate = (): boolean => {
+    const newErrors: Errors = {};
     if (!email) newErrors.email = "Vui lòng nhập email";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       newErrors.email = "Email không hợp lệ";
+
     if (!password) newErrors.password = "Vui lòng nhập mật khẩu";
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!validate()) return;
-    setLoading(true);
 
+    setLoading(true);
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
-      if (error.message.includes("Invalid login credentials")) {
-        setErrors({ general: "Email hoặc mật khẩu không đúng" });
-      } else {
-        setErrors({ general: error.message });
-      }
+      setErrors({
+        general: error.message.includes("Invalid login credentials")
+          ? "Email hoặc mật khẩu không đúng"
+          : error.message,
+      });
       setLoading(false);
       return;
     }
@@ -75,7 +83,9 @@ export default function LoginPage() {
             type="email"
             className="w-full border px-3 py-2 rounded"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              setEmail(e.target.value)
+            }
             aria-describedby="email-error"
           />
           {errors.email && (
@@ -95,7 +105,9 @@ export default function LoginPage() {
               type={showPassword ? "text" : "password"}
               className="w-full border px-3 py-2 rounded pr-12"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                setPassword(e.target.value)
+              }
               aria-describedby="password-error"
             />
             {password && (

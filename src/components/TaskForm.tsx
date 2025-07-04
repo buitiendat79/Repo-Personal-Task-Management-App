@@ -1,22 +1,38 @@
 import { useState } from "react";
+import { notifyError } from "../utils/notify";
+
+export interface TaskData {
+  title: string;
+  description: string;
+  dueDate: string;
+  content: string;
+}
+
+interface TaskFormProps {
+  onSave: (data: TaskData) => void;
+  onCancel: () => void;
+  initialData?: Partial<Omit<TaskData, "content">>;
+  content: string;
+}
 
 export default function TaskForm({
   onSave,
   onCancel,
   initialData = {},
   content,
-}) {
+}: TaskFormProps) {
   const [title, setTitle] = useState(initialData.title || "");
   const [description, setDescription] = useState(initialData.description || "");
   const [dueDate, setDueDate] = useState(initialData.dueDate || "");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  // Submit form
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     if (!title.trim()) {
-      alert("Tên task là bắt buộc.");
+      notifyError("Tên task là bắt buộc.");
       setLoading(false);
       return;
     }

@@ -2,25 +2,43 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { supabase } from "../../api/supabaseClient";
-import { setUser } from "../auth/AuthSlice";
+import { setUser } from "./AuthSlice";
 import { FiEye, FiEyeOff } from "react-icons/fi";
+
+// Type cho Loi tung field
+interface FormErrors {
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+  agree?: string;
+  general?: string;
+}
+
+// Type cac field "blur"
+interface FormTouched {
+  email?: boolean;
+  password?: boolean;
+  confirmPassword?: boolean;
+  agree?: boolean;
+}
 
 export default function RegisterPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [agree, setAgree] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [touched, setTouched] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [successMsg, setSuccessMsg] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [confirmPassword, setConfirmPassword] = useState<string>("");
+  const [agree, setAgree] = useState<boolean>(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [touched, setTouched] = useState<FormTouched>({});
+  const [loading, setLoading] = useState<boolean>(false);
+  const [successMsg, setSuccessMsg] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] =
+    useState<boolean>(false);
 
-  const validateField = async (field) => {
+  const validateField = async (field: string): Promise<FormErrors> => {
     const newErrors = { ...errors };
 
     if (field === "email") {
@@ -38,37 +56,34 @@ export default function RegisterPage() {
     }
 
     if (field === "password") {
-      if (!password) {
-        newErrors.password = "Vui lòng nhập mật khẩu";
-      } else if (password.length < 8) {
+      if (!password) newErrors.password = "Vui lòng nhập mật khẩu";
+      else if (password.length < 8)
         newErrors.password = "Mật khẩu tối thiểu 8 ký tự";
-      } else if (!/\d/.test(password)) {
+      else if (!/\d/.test(password))
         newErrors.password = "Mật khẩu phải chứa số";
-      } else if (!/[!@#$%^&*()_+{}\[\]:;<>,.?~\\/-]/.test(password)) {
+      else if (!/[!@#$%^&*()_+{}\[\]:;<>,.?~\\/-]/.test(password))
         newErrors.password = "Mật khẩu phải chứa ký tự đặc biệt";
-      } else {
-        delete newErrors.password;
-      }
+      else delete newErrors.password;
     }
 
-    if (!confirmPassword) {
-      newErrors.confirmPassword = "Vui lòng nhập lại mật khẩu";
-    } else if (confirmPassword !== password) {
-      newErrors.confirmPassword = "Mật khẩu không khớp";
-    } else {
-      delete newErrors.confirmPassword;
+    if (field === "confirmPassword") {
+      if (!confirmPassword)
+        newErrors.confirmPassword = "Vui lòng nhập lại mật khẩu";
+      else if (confirmPassword !== password)
+        newErrors.confirmPassword = "Mật khẩu không khớp";
+      else delete newErrors.confirmPassword;
     }
 
     setErrors(newErrors);
     return newErrors;
   };
 
-  const handleBlur = (field) => {
+  const handleBlur = (field: keyof FormTouched) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
     validateField(field);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const emailErrors = await validateField("email");
@@ -114,7 +129,7 @@ export default function RegisterPage() {
 
     const { error: insertError } = await supabase
       .from("users")
-      .insert([{ id: data.user.id, email }]);
+      .insert([{ id: data.user?.id, email }]);
 
     if (insertError) {
       setErrors({ general: insertError.message });
@@ -127,6 +142,7 @@ export default function RegisterPage() {
         navigate("/login");
       }, 1000);
     }
+
     setLoading(false);
   };
 
@@ -141,7 +157,7 @@ export default function RegisterPage() {
   return (
     <>
       {successMsg && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded shadow-lg z-50 transition-all duration-300">
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded shadow-lg z-50">
           {successMsg}
         </div>
       )}
@@ -160,6 +176,7 @@ export default function RegisterPage() {
             </p>
           )}
 
+          {/* Email */}
           <div className="mb-4">
             <label htmlFor="email" className="block mb-1">
               Email
@@ -177,6 +194,7 @@ export default function RegisterPage() {
             )}
           </div>
 
+          {/* Password */}
           <div className="mb-4">
             <label htmlFor="password" className="block mb-1">
               Mật khẩu
@@ -207,6 +225,7 @@ export default function RegisterPage() {
             )}
           </div>
 
+          {/* Confirm Password */}
           <div className="mb-4">
             <label htmlFor="confirmPassword" className="block mb-1">
               Nhập lại mật khẩu
@@ -243,6 +262,7 @@ export default function RegisterPage() {
             )}
           </div>
 
+          {/* Checkbox */}
           <div className="mb-4">
             <label
               htmlFor="agree"
@@ -282,6 +302,7 @@ export default function RegisterPage() {
             )}
           </div>
 
+          {/* Submit */}
           <button
             type="submit"
             disabled={loading || !isValidInputs}
@@ -290,6 +311,7 @@ export default function RegisterPage() {
             {loading ? "Đang đăng ký..." : "Đăng ký"}
           </button>
 
+          {/* Link login */}
           <p className="text-center text-sm mt-4">
             Đã có tài khoản?{" "}
             <Link to="/login" className="text-blue-600 underline">
