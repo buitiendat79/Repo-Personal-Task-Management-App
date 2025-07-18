@@ -1,12 +1,14 @@
 import { supabase } from "./supabaseClient";
 import { Task, TaskInput } from "../types/task";
 
+// Tạo task mới
 export const createTask = async (task: TaskInput) => {
   const { data, error } = await supabase.from("tasks").insert(task).select();
   if (error) throw error;
   return data;
 };
 
+// Lấy danh sách task theo filter
 export const fetchTasks = async (
   userId: string,
   status?: string,
@@ -52,6 +54,7 @@ export const fetchTasks = async (
   };
 };
 
+// task theo id
 export const fetchTaskById = async (taskId: string): Promise<Task | null> => {
   const { data, error } = await supabase
     .from("tasks")
@@ -63,6 +66,7 @@ export const fetchTaskById = async (taskId: string): Promise<Task | null> => {
   return data;
 };
 
+// Cập nhật 1 task theo id
 export const updateTask = async (
   taskId: string,
   updates: Partial<TaskInput>
@@ -78,6 +82,7 @@ export const updateTask = async (
   return data;
 };
 
+// Xoá task theo id
 export const deleteTask = async (taskId: string) => {
   const { error } = await supabase.from("tasks").delete().eq("id", taskId);
   if (error) throw error;

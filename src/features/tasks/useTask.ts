@@ -1,14 +1,21 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { createTask, fetchTasks } from "../../api/taskApi";
+import {
+  createTask,
+  fetchTasks,
+  fetchTaskById,
+  updateTask,
+  deleteTask,
+} from "../../api/taskApi";
 import { TaskInput } from "../../types/task";
-import { fetchTaskById, updateTask, deleteTask } from "../../api/taskApi";
 
+// Hook tạo task mới
 export const useCreateTask = () => {
   return useMutation({
     mutationFn: (task: TaskInput) => createTask(task),
   });
 };
 
+// Hook lấy danh sách task
 export const useTasks = (
   userId: string,
   status?: string,
@@ -23,11 +30,11 @@ export const useTasks = (
     queryFn: () =>
       fetchTasks(userId, status, priority, deadline, search, page, limit),
     enabled: !!userId,
-    keepPreviousData: true, // không flick khi chuyển trang
+    keepPreviousData: true, // giữ lại dữ liệu trang trước
   });
 };
 
-// Fetch 1 task theo id
+// Hook lấy 1 task theo id
 export const useTask = (taskId: string) => {
   return useQuery({
     queryKey: ["task", taskId],
@@ -36,7 +43,7 @@ export const useTask = (taskId: string) => {
   });
 };
 
-// Update task
+// Hook cập nhật task theo id
 export const useUpdateTask = () => {
   return useMutation({
     mutationFn: ({
@@ -49,7 +56,7 @@ export const useUpdateTask = () => {
   });
 };
 
-// Delete task
+// Hook xoá task theo id
 export const useDeleteTask = () => {
   return useMutation({
     mutationFn: (taskId: string) => deleteTask(taskId),
