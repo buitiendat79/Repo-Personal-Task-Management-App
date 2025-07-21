@@ -4,6 +4,7 @@ import LoginPage from "./features/auth/LoginPage";
 import TasksPage from "./features/tasks/TaskPage";
 import CreateTasksPage from "./features/tasks/CreateTasksPage";
 import EditTaskPage from "./features/tasks/EditTaskPage";
+import DashboardPage from "./pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
@@ -14,6 +15,15 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
 
         <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/createtask"
           element={
             <ProtectedRoute>
@@ -21,7 +31,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/tasks"
           element={
@@ -30,7 +39,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/tasks/:taskId/edit"
           element={

@@ -28,12 +28,19 @@ const TasksPage = () => {
   const [filterError, setFilterError] = useState("");
   const [completedMap, setCompletedMap] = useState<Record<string, boolean>>({});
 
-  const deadline = endDate ? endDate.toISOString().split("T")[0] : "";
   const {
     data: tasksResponse,
     isLoading,
     isError,
-  } = useTasks(userId, status, priority, deadline, search, page, LIMIT);
+  } = useTasks(
+    userId,
+    status,
+    priority,
+    endDate ? endDate.toISOString().split("T")[0] : "",
+    search,
+    page,
+    LIMIT
+  );
 
   const totalPages = Math.ceil((tasksResponse?.total || 0) / LIMIT);
 
@@ -75,6 +82,9 @@ const TasksPage = () => {
 
   const showErrorMessage = () => {
     if (filterError) return filterError;
+    if (startDate && endDate && endDate < startDate) {
+      return "Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc";
+    }
     if (isError) return "Có lỗi xảy ra, vui lòng thử lại sau";
     if (tasksResponse && tasksResponse.data.length === 0)
       return "Không tìm thấy task nào phù hợp với điều kiện lọc/tìm kiếm";
@@ -89,7 +99,7 @@ const TasksPage = () => {
         <h1 className="text-4xl font-bold mb-6">Danh sách Task</h1>
 
         <div className="bg-white p-6 rounded shadow">
-          <form className="flex flex-wrap gap-4 items-end mb-6">
+          <form className="flex flex-wrap gap-4 items-end mb-6 relative z-10">
             <div className="relative w-[520px]">
               <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -123,29 +133,29 @@ const TasksPage = () => {
               <option value="Low">Low</option>
             </select>
 
-            <div className="relative basis-[180px]">
+            <div className="relative basis-[180px] z-50">
               <DatePicker
                 selectsRange
                 startDate={startDate}
                 endDate={endDate}
-                onChange={(update: [Date | null, Date | null]) => {
-                  setDateRange(update);
-                }}
+                onChange={(update: [Date | null, Date | null]) =>
+                  setDateRange(update)
+                }
                 placeholderText="Đến ngày"
                 className="border px-3 py-2 rounded text-sm text-gray-500 w-full"
                 dateFormat="dd/MM/yyyy"
                 isClearable
                 popperPlacement="bottom-start"
+                popperClassName="z-[9999]"
+                wrapperClassName="w-full"
                 popperModifiers={[
                   {
-                    name: "preventOverflow",
+                    name: "offset",
                     options: {
-                      boundary: "viewport",
+                      offset: [0, 10],
                     },
                   },
                 ]}
-                popperClassName="!z-50"
-                portalId="root"
               />
             </div>
           </form>
@@ -231,7 +241,7 @@ const TasksPage = () => {
                 <button
                   disabled={page === 1}
                   onClick={() => setPage(page - 1)}
-                  className="px-2 py-1 text-gray-500 text-sm rounded disabled:opacity-30"
+                  className="px-2 py-1 text-gray-600 text-base font-medium rounded disabled:opacity-30"
                 >
                   &lt;
                 </button>
@@ -240,7 +250,7 @@ const TasksPage = () => {
                   <button
                     key={idx}
                     onClick={() => setPage(idx + 1)}
-                    className="px-3 py-1 text-sm text-gray-500 rounded"
+                    className="px-3 py-1 text-base font-medium text-gray-600 rounded"
                   >
                     {idx + 1}
                   </button>
@@ -249,7 +259,7 @@ const TasksPage = () => {
                 <button
                   disabled={page === totalPages}
                   onClick={() => setPage(page + 1)}
-                  className="px-2 py-1 text-sm text-gray-500 rounded disabled:opacity-30"
+                  className="px-2 py-1 text-base font-medium text-gray-600 rounded disabled:opacity-30"
                 >
                   &gt;
                 </button>
