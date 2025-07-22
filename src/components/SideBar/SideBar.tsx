@@ -13,7 +13,7 @@ export const Sidebar = () => {
   ];
 
   return (
-    <aside className="w-[240px] min-h-screen bg-gray-800 p-4 shadow-sm">
+    <aside className="w-[240px] h-full bg-gray-800 p-4 shadow-sm rounded-r-2xl">
       <div className="mb-10">
         <div className="w-9 h-9 bg-gray-500 rounded-md flex items-center justify-center">
           <div className="w-4 h-4 bg-white rounded-sm" />

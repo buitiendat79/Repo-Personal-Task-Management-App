@@ -34,12 +34,12 @@ const TaskList = () => {
   };
 
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm">
+    <div className="bg-white rounded-2xl p-6 shadow-md">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Danh sách Task</h2>
+        <h1 className="text-2xl font-semibold">Danh sách Task</h1>
         <button
           onClick={() => navigate("/createtask")}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
+          className="px-4 py-2 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600"
         >
           + Thêm Task
         </button>
@@ -80,7 +80,7 @@ const TaskList = () => {
                   className="flex items-center gap-1 text-blue-600 font-semibold hover:underline"
                   onClick={() => navigate(`/tasks/${task.id}`)}
                 >
-                  <FiEdit3 className="w-4 h-4" />
+                  {/* <FiEdit3 className="w-4 h-4" /> */}
                   <span>Xem</span>
                 </button>
               </td>

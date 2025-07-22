@@ -3,12 +3,12 @@ import React from "react";
 
 const Header: React.FC = () => {
   return (
-    <header className="flex items-center justify-between px-6 py-4 bg-white shadow-sm rounded-md">
+    <header className="flex items-center justify-between px-6 py-4 bg-white shadow-md rounded-xl">
       <div className="flex items-center gap-2">
-        <div className="w-9 h-9 bg-gray-800 rounded-md flex items-center justify-center">
+        <div className="w-9 h-9 bg-gray-500 rounded-md flex items-center justify-center">
           <div className="w-4 h-4 bg-white rounded-sm" />
         </div>
-        <h1 className="text-xl font-semibold text-gray-800">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
       </div>
 
       <div className="flex items-center gap-3">
