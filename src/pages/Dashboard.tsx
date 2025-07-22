@@ -7,7 +7,7 @@ import { mockTasks } from "../mocks/tasks";
 const DashboardPage = () => {
   return (
     <DashboardLayout>
-      <div className="flex flex-col min-h-full gap-6">
+      <div className="flex flex-col min-h-full gap-4">
         <Header />
         <TaskList />
         <TaskStat />

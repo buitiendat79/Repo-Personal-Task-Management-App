@@ -3,12 +3,14 @@ import clsx from "clsx";
 
 interface SidebarItemProps {
   label: string;
+  icon?: React.ReactNode;
   isActive?: boolean;
   onClick?: () => void;
 }
 
 export const SidebarItem: React.FC<SidebarItemProps> = ({
   label,
+  icon,
   isActive,
   onClick,
 }) => {
@@ -16,11 +18,12 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
     <button
       onClick={onClick}
       className={clsx(
-        "text-left px-3 py-2 rounded-md font-medium transition-all",
-        isActive ? "bg-gray-500 text-white" : "text-white hover:bg-gray-500"
+        "text-left px-3 py-2 rounded-md text-xl font-medium transition-all flex items-center gap-3",
+        isActive ? "bg-gray-600 text-white" : "text-white hover:bg-gray-500"
       )}
     >
-      {label}
+      {icon && <span className="text-lg">{icon}</span>}
+      <span>{label}</span>
     </button>
   );
 };

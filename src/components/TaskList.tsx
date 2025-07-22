@@ -1,5 +1,4 @@
 import React from "react";
-import { FiEdit3 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { mockTasks } from "../mocks/tasks";
 
@@ -36,10 +35,10 @@ const TaskList = () => {
   return (
     <div className="bg-white rounded-2xl p-6 shadow-md">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-semibold">Danh sách Task</h1>
+        <h1 className="text-2xl font-semibold mb-6">Danh sách Task</h1>
         <button
           onClick={() => navigate("/createtask")}
-          className="px-4 py-2 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600"
+          className="px-4 py-2 bg-blue-700 text-white rounded-lg font-semibold hover:bg-blue-600"
         >
           + Thêm Task
         </button>
@@ -77,21 +76,20 @@ const TaskList = () => {
               <td className="py-3 px-4">
                 <button
                   type="button"
-                  className="flex items-center gap-1 text-blue-600 font-semibold hover:underline"
+                  className="flex items-center gap-1 text-gray-600 font-semibold hover:underline"
                   onClick={() => navigate(`/tasks/${task.id}`)}
                 >
-                  {/* <FiEdit3 className="w-4 h-4" /> */}
                   <span>Xem</span>
                 </button>
               </td>
             </tr>
           ))}
 
-          {Array.from({ length: emptyRows }).map((_, idx) => (
+          {/* {Array.from({ length: emptyRows }).map((_, idx) => (
             <tr key={`empty-${idx}`} className="border-b h-[56px]">
               <td colSpan={4} />
             </tr>
-          ))}
+          ))} */}
         </tbody>
       </table>
     </div>
