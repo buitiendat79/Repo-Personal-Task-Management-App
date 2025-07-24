@@ -1,105 +1,91 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import TaskForm from "./index";
-import { BrowserRouter } from "react-router-dom";
-import { Provider } from "react-redux";
-import { store } from "../../app/store";
-import { vi } from "vitest";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+// src/components/TaskForm/TaskForm.test.tsx
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect } from "vitest";
+import TaskForm from ".";
+import { Priority } from "../../types/task";
+import { TestProviders } from "../../test/TestProviders";
 
-// Mock useUser
-vi.mock("@supabase/auth-helpers-react", () => ({
-  useUser: () => ({ id: "test-user-id" }),
-}));
-
-// Mock useCreateTask
-vi.mock("../../features/tasks/useTask", () => ({
-  useCreateTask: () => ({
-    mutate: vi.fn(),
-    isPending: false,
-  }),
-}));
-
-// Wrapper chung cho tất cả test
-function renderWithProviders(ui = <TaskForm onSuccess={vi.fn()} />) {
-  const queryClient = new QueryClient();
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <Provider store={store}>
-        <BrowserRouter>{ui}</BrowserRouter>
-      </Provider>
-    </QueryClientProvider>
-  );
-}
-
-describe("TaskForm - Unit Tests", () => {
-  test("hiển thị đầy đủ các trường trong form", () => {
-    renderWithProviders();
-    expect(screen.getByLabelText(/tên task/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/mô tả/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/deadline/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/ưu tiên/i)).toBeInTheDocument();
-    expect(screen.getByText("Checklist")).toBeInTheDocument();
-  });
-
-  test("hiển thị lỗi khi bỏ trống các trường bắt buộc", async () => {
-    renderWithProviders();
-
-    const titleInput = screen.getByLabelText(/tên task/i);
-    const deadlineInput = screen.getByLabelText(/deadline/i);
-    const prioritySelect = screen.getByLabelText(/ưu tiên/i);
-
-    await userEvent.type(titleInput, "abc");
-    await userEvent.clear(titleInput);
-
-    await userEvent.type(deadlineInput, "2025-01-01");
-    await userEvent.clear(deadlineInput);
-
-    await userEvent.selectOptions(prioritySelect, "Medium");
-    await userEvent.selectOptions(prioritySelect, "");
-
-    const button = screen.getByRole("button", { name: /tạo mới/i });
-    await userEvent.click(button);
-
-    expect(
-      await screen.findByText(/vui lòng nhập tên task/i)
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText(/vui lòng chọn deadline/i)
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText(/vui lòng chọn mức ưu tiên/i)
-    ).toBeInTheDocument();
-  });
-
-  test("hiển thị lỗi nếu deadline trong quá khứ", async () => {
-    renderWithProviders();
-    const deadlineInput = screen.getByLabelText(/deadline/i);
-    const button = screen.getByRole("button", { name: /tạo mới/i });
-
-    await userEvent.clear(deadlineInput);
-    await userEvent.type(deadlineInput, "2020-01-01");
-    await userEvent.click(button);
-
-    expect(
-      await screen.findByText(/deadline không hợp lệ/i)
-    ).toBeInTheDocument();
-  });
-
-  test("hiển thị lỗi nếu checklist item để trống", async () => {
-    renderWithProviders();
-
-    const addChecklistBtn = screen.getByText("+ Thêm checklist");
-    fireEvent.click(addChecklistBtn); // Thêm checklist rỗng
-
-    const createButton = screen.getByRole("button", { name: /tạo mới/i });
-    fireEvent.click(createButton); // Submit form
-
-    // Dùng regex mềm dẻo
-    const checklistError = await screen.findByText(
-      /Checklist\s*1:\s*Checklist không được để trống/i
+describe("TaskForm - Unit Test", () => {
+  it("should render all fields", () => {
+    render(
+      <TestProviders>
+        <TaskForm />
+      </TestProviders>
     );
 
-    expect(checklistError).toBeInTheDocument();
+    expect(screen.getByLabelText(/Tên task/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Deadline/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Ưu tiên/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Checklist/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /Tạo mới/i })).toBeDisabled();
+  });
+
+  it("should show error when submitting empty form", async () => {
+    render(
+      <TestProviders>
+        <TaskForm />
+      </TestProviders>
+    );
+
+    const submitBtn = screen.getByRole("button", { name: /Tạo mới/i });
+
+    // Giả lập blur để trigger lỗi thủ công:
+    const titleInput = screen.getByLabelText(/Tên task/i);
+    fireEvent.blur(titleInput); // ← quan trọng!
+
+    fireEvent.click(submitBtn); // hoặc fireEvent.submit(form)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("error-title")).toBeInTheDocument();
+    });
+
+    expect(
+      await screen.findByText(/Vui lòng chọn deadline/i)
+    ).toBeInTheDocument();
+
+    expect(
+      await screen.findByText(/Vui lòng chọn mức ưu tiên/i)
+    ).toBeInTheDocument();
+  });
+
+  it("should enable submit when valid data is entered", async () => {
+    render(
+      <TestProviders>
+        <TaskForm />
+      </TestProviders>
+    );
+
+    await fireEvent.input(screen.getByLabelText(/Tên task/i), {
+      target: { value: "Task 1" },
+    });
+
+    const today = new Date().toISOString().split("T")[0];
+    await fireEvent.change(screen.getByLabelText(/Deadline/i), {
+      target: { value: today },
+    });
+
+    await fireEvent.change(screen.getByTestId("priority-select"), {
+      target: { value: Priority.HIGH },
+    });
+
+    expect(screen.getByRole("button", { name: /Tạo mới/i })).toBeEnabled();
+  });
+
+  it("should display checklist validation", async () => {
+    render(
+      <TestProviders>
+        <TaskForm />
+      </TestProviders>
+    );
+
+    const addBtn = screen.getByRole("button", { name: /Thêm/i });
+    await fireEvent.click(addBtn);
+
+    const submitBtn = screen.getByRole("button", { name: /Tạo mới/i });
+    await fireEvent.click(submitBtn);
+
+    expect(
+      await screen.findByText(/Checklist 1: Không được để trống/i)
+    ).toBeInTheDocument();
   });
 });

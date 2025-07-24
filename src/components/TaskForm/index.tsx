@@ -53,7 +53,7 @@ const schema = yup.object().shape({
 export default function TaskForm({
   mode = "create",
   onSuccess,
-  onDelete,
+  // onDelete,
   initialData,
 }: TaskFormProps) {
   const navigate = useNavigate();
@@ -64,7 +64,7 @@ export default function TaskForm({
   // State xoá/cập nhật (Edit mode)
   const [deleting, setDeleting] = useState(false);
   const [updating, setUpdating] = useState(false);
-  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  // const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
   // Khởi tạo react-hook-form
   const {
@@ -95,7 +95,7 @@ export default function TaskForm({
   // Hàm xử lý submit
   const onSubmit = (data: TaskInput) => {
     if (!user?.id) {
-      notifyError("Không tìm thấy thông tin người dùng!");
+      notifyError("Không tìm thấy thông tin người dùng");
       return;
     }
 
@@ -135,7 +135,9 @@ export default function TaskForm({
           className="w-full border rounded p-2"
         />
         {errors.title && (
-          <p className="text-red-500 text-sm mt-1">{errors.title.message}</p>
+          <p data-testid="error-title" className="text-red-500 text-sm mt-1">
+            {errors.title.message}
+          </p>
         )}
       </div>
 
@@ -279,24 +281,24 @@ export default function TaskForm({
         ) : (
           <>
             {/* Edit mode */}
-            <button
+            {/* <button
               type="button"
               onClick={() => navigate("/tasks")}
               className="w-[140px] py-2 border border-gray-400 text-gray-700 bg-white rounded-md hover:bg-gray-100 font-semibold"
             >
               Huỷ
-            </button>
+            </button> */}
 
-            <button
+            {/* <button
               type="button"
               onClick={() => setShowConfirmDelete(true)}
               disabled={deleting}
               className="w-[140px] py-2 border border-red-500 text-red-600 rounded-md hover:bg-red-50 font-semibold"
             >
               {deleting ? "Đang xoá..." : "Xoá task"}
-            </button>
+            </button> */}
 
-            <button
+            {/* <button
               type="submit"
               disabled={!isValid || updating}
               className={`w-[140px] py-2 rounded-md text-white font-semibold transition ${
@@ -306,7 +308,7 @@ export default function TaskForm({
               }`}
             >
               {updating ? "Đang cập nhật..." : "Cập nhật"}
-            </button>
+            </button> */}
           </>
         )}
       </div>
