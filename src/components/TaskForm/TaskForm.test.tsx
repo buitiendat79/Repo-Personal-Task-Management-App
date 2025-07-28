@@ -1,9 +1,8 @@
-// src/components/TaskForm/TaskForm.test.tsx
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import TaskForm from ".";
-import { Priority } from "../../types/task";
 import { TestProviders } from "../../test/TestProviders";
+import { Priority } from "../../types/task";
 
 describe("TaskForm - Unit Test", () => {
   it("should render all fields", () => {
@@ -20,32 +19,35 @@ describe("TaskForm - Unit Test", () => {
     expect(screen.getByRole("button", { name: /Tạo mới/i })).toBeDisabled();
   });
 
-  it("should show error when submitting empty form", async () => {
+  it("should show errors when submitting empty form", async () => {
     render(
       <TestProviders>
         <TaskForm />
       </TestProviders>
     );
 
-    const submitBtn = screen.getByRole("button", { name: /Tạo mới/i });
+    fireEvent.input(screen.getByLabelText(/Tên task/i), {
+      target: { value: " " },
+    });
+    fireEvent.blur(screen.getByLabelText(/Tên task/i));
 
-    // Giả lập blur để trigger lỗi thủ công:
-    const titleInput = screen.getByLabelText(/Tên task/i);
-    fireEvent.blur(titleInput); // ← quan trọng!
+    fireEvent.change(screen.getByLabelText(/Deadline/i), {
+      target: { value: "" },
+    });
+    fireEvent.blur(screen.getByLabelText(/Deadline/i));
 
-    fireEvent.click(submitBtn); // hoặc fireEvent.submit(form)
+    fireEvent.change(screen.getByLabelText(/Ưu tiên/i), {
+      target: { value: "" },
+    });
+    fireEvent.blur(screen.getByLabelText(/Ưu tiên/i));
+
+    fireEvent.click(screen.getByRole("button", { name: /Tạo mới/i }));
 
     await waitFor(() => {
       expect(screen.getByTestId("error-title")).toBeInTheDocument();
+      expect(screen.getByTestId("error-deadline")).toBeInTheDocument();
+      expect(screen.getByTestId("priority-select")).toBeInTheDocument();
     });
-
-    expect(
-      await screen.findByText(/Vui lòng chọn deadline/i)
-    ).toBeInTheDocument();
-
-    expect(
-      await screen.findByText(/Vui lòng chọn mức ưu tiên/i)
-    ).toBeInTheDocument();
   });
 
   it("should enable submit when valid data is entered", async () => {
@@ -55,20 +57,22 @@ describe("TaskForm - Unit Test", () => {
       </TestProviders>
     );
 
-    await fireEvent.input(screen.getByLabelText(/Tên task/i), {
+    fireEvent.input(screen.getByLabelText(/Tên task/i), {
       target: { value: "Task 1" },
     });
 
     const today = new Date().toISOString().split("T")[0];
-    await fireEvent.change(screen.getByLabelText(/Deadline/i), {
+    fireEvent.change(screen.getByLabelText(/Deadline/i), {
       target: { value: today },
     });
 
-    await fireEvent.change(screen.getByTestId("priority-select"), {
-      target: { value: Priority.HIGH },
+    fireEvent.change(screen.getByLabelText(/Ưu tiên/i), {
+      target: { value: "High" },
     });
 
-    expect(screen.getByRole("button", { name: /Tạo mới/i })).toBeEnabled();
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Tạo mới/i })).toBeEnabled();
+    });
   });
 
   it("should display checklist validation", async () => {
@@ -78,14 +82,17 @@ describe("TaskForm - Unit Test", () => {
       </TestProviders>
     );
 
-    const addBtn = screen.getByRole("button", { name: /Thêm/i });
-    await fireEvent.click(addBtn);
+    fireEvent.click(screen.getByRole("button", { name: /Thêm/i }));
 
-    const submitBtn = screen.getByRole("button", { name: /Tạo mới/i });
-    await fireEvent.click(submitBtn);
+    const checklistInput = screen.getByPlaceholderText(/Item 1/i);
+    fireEvent.blur(checklistInput); // Trigger validation
 
-    expect(
-      await screen.findByText(/Checklist 1: Không được để trống/i)
-    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Tạo mới/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("error-checklist-0")).toHaveTextContent(
+        /Checklist 1: Checklist không được để trống/i
+      );
+    });
   });
 });

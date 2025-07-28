@@ -135,7 +135,7 @@ export default function TaskForm({
           className="w-full border rounded p-2"
         />
         {errors.title && (
-          <p data-testid="error-title" className="text-red-500 text-sm mt-1">
+          <p className="text-red-500 text-sm mt-1" data-testid="error-title">
             {errors.title.message}
           </p>
         )}
@@ -169,7 +169,9 @@ export default function TaskForm({
           min={today}
         />
         {errors.deadline && (
-          <p className="text-red-500 text-sm mt-1">{errors.deadline.message}</p>
+          <p className="text-red-500 text-sm mt-1" data-testid="error-deadline">
+            {errors.deadline.message}
+          </p>
         )}
       </div>
 
@@ -188,7 +190,12 @@ export default function TaskForm({
           <option value="High">High</option>
         </select>
         {errors.priority && (
-          <p className="text-red-500 text-sm mt-1">{errors.priority.message}</p>
+          <p
+            className="text-red-500 text-sm mt-1"
+            data-testid="priority-select"
+          >
+            {errors.priority.message}
+          </p>
         )}
       </div>
 
@@ -236,7 +243,10 @@ export default function TaskForm({
               </div>
 
               {errors.checklist?.[index]?.content?.message && (
-                <p className="text-red-500 text-sm ml-1">
+                <p
+                  className="text-red-500 text-sm ml-1"
+                  data-testid={`error-checklist-${index}`}
+                >
                   Checklist {index + 1}:{" "}
                   {errors.checklist[index].content.message}
                 </p>
