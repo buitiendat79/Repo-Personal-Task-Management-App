@@ -5,6 +5,7 @@ import {
   fetchTaskById,
   updateTask,
   deleteTask,
+  updateCompleted,
 } from "../../api/taskApi";
 import { TaskInput } from "../../types/task";
 
@@ -60,5 +61,17 @@ export const useUpdateTask = () => {
 export const useDeleteTask = () => {
   return useMutation({
     mutationFn: (taskId: string) => deleteTask(taskId),
+  });
+};
+
+export const useToggleTaskCompleted = () => {
+  return useMutation({
+    mutationFn: ({
+      taskId,
+      completed,
+    }: {
+      taskId: string;
+      completed: boolean;
+    }) => updateCompleted(taskId, completed),
   });
 };

@@ -87,3 +87,15 @@ export const deleteTask = async (taskId: string) => {
   const { error } = await supabase.from("tasks").delete().eq("id", taskId);
   if (error) throw error;
 };
+
+// Cập nhật trạng thái
+export const updateCompleted = async (taskId: string, completed: boolean) => {
+  const { error } = await supabase
+    .from("tasks")
+    .update({ completed })
+    .eq("id", taskId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+};

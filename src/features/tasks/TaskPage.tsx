@@ -25,7 +25,7 @@ const TasksPage = () => {
   ]);
   const [startDate, endDate] = dateRange;
   const [page, setPage] = useState(1);
-  const [filterError, setFilterError] = useState("");
+  // const [filterError, setFilterError] = useState(""); // ❌ Không còn dùng nữa
   const [completedMap, setCompletedMap] = useState<Record<string, boolean>>({});
 
   const {
@@ -46,18 +46,16 @@ const TasksPage = () => {
 
   useEffect(() => {
     setPage(1);
-    if (startDate && endDate && startDate > endDate) {
-      setFilterError("Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc");
-    } else {
-      setFilterError("");
-    }
+    // if (startDate && endDate && startDate > endDate) {
+    //   setFilterError("Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc");
+    // } else {
+    //   setFilterError("");
+    // }
   }, [startDate, endDate]);
 
   useEffect(() => {
-    if (search === "") {
-      setFilterError("");
-    }
     setPage(1);
+    // if (search === "") setFilterError(""); //
   }, [search, status, priority]);
 
   const getPriorityClass = (priority: string) => {
@@ -81,10 +79,7 @@ const TasksPage = () => {
   };
 
   const showErrorMessage = () => {
-    if (filterError) return filterError;
-    if (startDate && endDate && endDate < startDate) {
-      return "Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc";
-    }
+    // if (filterError) return filterError; //
     if (isError) return "Có lỗi xảy ra, vui lòng thử lại sau";
     if (tasksResponse && tasksResponse.data.length === 0)
       return "Không tìm thấy task nào phù hợp với điều kiện lọc/tìm kiếm";
@@ -94,13 +89,22 @@ const TasksPage = () => {
   const errorMessage = showErrorMessage();
 
   return (
-    <div className="min-h-screen bg-gray-100 py-10 px-4">
+    <div className="min-h-screen bg-gray-100 py-8 px-4">
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-4xl font-bold mb-6">Danh sách Task</h1>
+        <div className="flex justify-between items-center max-w-5xl mx-auto mt-6 px-1 mb-6">
+          <h1 className="text-4xl font-bold">Danh sách Task</h1>
 
-        <div className="bg-white p-6 rounded shadow">
-          <form className="flex flex-wrap gap-4 items-end mb-6 relative z-10">
-            <div className="relative w-[520px]">
+          <button
+            onClick={() => navigate("/createtask")}
+            className="bg-yellow-400 border-red-50 hover:bg-yellow-300 text-black font-semibold py-2 px-4 rounded-md shadow transition"
+          >
+            + Tạo mới task
+          </button>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-md">
+          <form className="flex flex-wrap items-end gap-4 mb-6 w-full overflow-visible">
+            <div className="relative flex-1 min-w-[250px] max-w-[520px]">
               <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
@@ -111,35 +115,37 @@ const TasksPage = () => {
               />
             </div>
 
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="border px-4 py-2 rounded text-sm text-gray-500"
-            >
-              <option value="all">Trạng thái</option>
-              <option value="To Do">To Do</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Done">Done</option>
-            </select>
+            <div className="min-w-[120px]">
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="border px-4 py-2 rounded text-sm text-gray-500 w-full"
+              >
+                <option value="all">Trạng thái</option>
+                <option value="To Do">To Do</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Done">Done</option>
+              </select>
+            </div>
 
-            <select
-              value={priority}
-              onChange={(e) => setPriority(e.target.value)}
-              className="border px-3 py-2 rounded text-sm text-gray-500"
-            >
-              <option value="all">Ưu tiên</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
-            </select>
+            <div className="min-w-[120px]">
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                className="border px-3 py-2 rounded text-sm text-gray-500 w-full"
+              >
+                <option value="all">Ưu tiên</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
 
-            <div className="relative basis-[180px] z-50">
+            <div className="relative w-[200px] z-[9999] overflow-visible">
               <DatePicker
-                selectsRange
-                startDate={startDate}
-                endDate={endDate}
-                onChange={(update: [Date | null, Date | null]) =>
-                  setDateRange(update)
+                selected={endDate}
+                onChange={(date: Date | null) =>
+                  setDateRange([new Date(), date])
                 }
                 placeholderText="Đến ngày"
                 className="border px-3 py-2 rounded text-sm text-gray-500 w-full"
@@ -148,11 +154,25 @@ const TasksPage = () => {
                 popperPlacement="bottom-start"
                 popperClassName="z-[9999]"
                 wrapperClassName="w-full"
+                usePortal
+                minDate={new Date()}
                 popperModifiers={[
                   {
                     name: "offset",
                     options: {
-                      offset: [0, 10],
+                      offset: [0, 12],
+                    },
+                  },
+                  {
+                    name: "preventOverflow",
+                    options: {
+                      boundary: "viewport",
+                    },
+                  },
+                  {
+                    name: "flip",
+                    options: {
+                      enabled: true,
                     },
                   },
                 ]}
@@ -166,18 +186,28 @@ const TasksPage = () => {
             </div>
           ) : isLoading ? (
             <div className="flex justify-center py-10">
-              <Loader2 className="animate-spin text-blue-600" size={24} />
+              <Loader2
+                data-testid="loading-spinner"
+                className="animate-spin text-blue-600"
+                size={24}
+              />
             </div>
           ) : (
             <div className="border rounded overflow-hidden bg-white">
-              <table className="w-full text-sm">
+              <table className="w-full table-fixed text-sm">
                 <thead className="bg-white text-left border-b">
                   <tr className="text-sm text-gray-800">
-                    <th className="p-3"></th>
-                    <th className="p-3 font-semibold text-base">Tên task</th>
-                    <th className="p-3 font-semibold text-base">Ưu tiên</th>
-                    <th className="p-3 font-semibold text-base">Đến ngày</th>
-                    <th className="p-3 text-center"></th>
+                    <th className="w-[40px] px-3"></th>
+                    <th className="px-4 py-3 font-medium text-lg w-[50%]">
+                      Tên task
+                    </th>
+                    <th className="px-4 py-3 font-medium text-lg w-[20%]">
+                      Ưu tiên
+                    </th>
+                    <th className="px-4 py-3 font-medium text-lg w-[20%]">
+                      Đến ngày
+                    </th>
+                    <th className="px-4 py-3 text-center w-[10%]"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -250,7 +280,11 @@ const TasksPage = () => {
                   <button
                     key={idx}
                     onClick={() => setPage(idx + 1)}
-                    className="px-3 py-1 text-base font-medium text-gray-600 rounded"
+                    className={`px-3 py-1 text-base font-medium rounded ${
+                      page === idx + 1
+                        ? "text-lg font-semibold"
+                        : "text-gray-800"
+                    }`}
                   >
                     {idx + 1}
                   </button>
