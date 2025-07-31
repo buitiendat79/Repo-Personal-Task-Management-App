@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import "react-datepicker/dist/react-datepicker.css";
 import { FiSearch } from "react-icons/fi";
 import { Loader2 } from "lucide-react";
+import { useUpdateTaskStatus } from "./useTask";
 
 const LIMIT = 8;
 
@@ -19,19 +20,21 @@ const TasksPage = () => {
   const [status, setStatus] = useState("all");
   const [priority, setPriority] = useState("all");
   const [search, setSearch] = useState("");
-  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
-    null,
-    null,
-  ]);
-  const [startDate, endDate] = dateRange;
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [endDateError, setEndDateError] = useState<string | null>(null);
+
   const [page, setPage] = useState(1);
-  // const [filterError, setFilterError] = useState(""); // ❌ Không còn dùng nữa
-  const [completedMap, setCompletedMap] = useState<Record<string, boolean>>({});
+  // const [filterError, setFilterError] = useState(""); //
+  // const [completedMap, setCompletedMap] = useState<Record<string, boolean>>({});
+  // const { mutate: toggleTaskCompleted } = useToggleTaskCompleted();
+  const { mutate: updateTaskStatus } = useUpdateTaskStatus();
+  const [updatingTaskIds, setUpdatingTaskIds] = useState<string[]>([]);
 
   const {
     data: tasksResponse,
     isLoading,
     isError,
+    refetch,
   } = useTasks(
     userId,
     status,
@@ -44,18 +47,35 @@ const TasksPage = () => {
 
   const totalPages = Math.ceil((tasksResponse?.total || 0) / LIMIT);
 
-  useEffect(() => {
-    setPage(1);
-    // if (startDate && endDate && startDate > endDate) {
-    //   setFilterError("Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc");
-    // } else {
-    //   setFilterError("");
-    // }
-  }, [startDate, endDate]);
+  const handleEndDateChange = (date: Date | null) => {
+    setEndDate(date);
+    if (date && dayjs(date).isBefore(dayjs(), "day")) {
+      setEndDateError("Ngày không hợp lệ");
+    } else {
+      setEndDateError(null);
+    }
+  };
 
+  const handleToggleStatus = (task: Task) => {
+    const newStatus = task.status === "Done" ? "To Do" : "Done";
+
+    setUpdatingTaskIds((prev) => [...prev, task.id]);
+
+    updateTaskStatus(
+      { taskId: task.id, status: newStatus },
+      {
+        onSuccess: () => {
+          refetch();
+        },
+        onSettled: () => {
+          // Xóa task khỏi danh sách đang cập nhật
+          setUpdatingTaskIds((prev) => prev.filter((id) => id !== task.id));
+        },
+      }
+    );
+  };
   useEffect(() => {
     setPage(1);
-    // if (search === "") setFilterError(""); //
   }, [search, status, priority]);
 
   const getPriorityClass = (priority: string) => {
@@ -71,15 +91,33 @@ const TasksPage = () => {
     }
   };
 
-  const toggleCompleted = (taskId: string) => {
-    setCompletedMap((prev) => ({
-      ...prev,
-      [taskId]: !prev[taskId],
-    }));
-  };
+  // const toggleCompleted = (task: Task) => {
+  //   const newCompleted = !task.completed;
+  //   const newStatus = newCompleted ? "Done" : "To Do";
+
+  //   toggleTaskCompleted({
+  //     taskId: task.id,
+  //     completed: newCompleted,
+  //   });
+
+  //   updateTaskStatus({
+  //     taskId: task.id,
+  //     status: newStatus,
+  //   });
+  // };
+
+  // const toggleCompleted = (task: Task) => {
+  //   const isCurrentlyDone = task.status === "Done";
+  //   const newStatus = isCurrentlyDone ? "To Do" : "Done";
+
+  //   updateTaskStatus({
+  //     taskId: task.id,
+  //     status: newStatus,
+  //   });
+  // };
 
   const showErrorMessage = () => {
-    // if (filterError) return filterError; //
+    if (endDateError) return endDateError;
     if (isError) return "Có lỗi xảy ra, vui lòng thử lại sau";
     if (tasksResponse && tasksResponse.data.length === 0)
       return "Không tìm thấy task nào phù hợp với điều kiện lọc/tìm kiếm";
@@ -96,7 +134,7 @@ const TasksPage = () => {
 
           <button
             onClick={() => navigate("/createtask")}
-            className="bg-yellow-400 border-red-50 hover:bg-yellow-300 text-black font-semibold py-2 px-4 rounded-md shadow transition"
+            className="bg-yellow-400 border-red-100 hover:bg-yellow-300 text-black font-semibold py-2 px-4 rounded-md shadow transition"
           >
             + Tạo mới task
           </button>
@@ -122,9 +160,9 @@ const TasksPage = () => {
                 className="border px-4 py-2 rounded text-sm text-gray-500 w-full"
               >
                 <option value="all">Trạng thái</option>
-                <option value="To Do">To Do</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Done">Done</option>
+                <option value="To Do">Chưa hoàn thành</option>
+                <option value="In Progress">Đang làm</option>
+                <option value="Done">Đã hoàn thành</option>
               </select>
             </div>
 
@@ -144,38 +182,10 @@ const TasksPage = () => {
             <div className="relative w-[200px] z-[9999] overflow-visible">
               <DatePicker
                 selected={endDate}
-                onChange={(date: Date | null) =>
-                  setDateRange([new Date(), date])
-                }
+                onChange={handleEndDateChange}
                 placeholderText="Đến ngày"
-                className="border px-3 py-2 rounded text-sm text-gray-500 w-full"
                 dateFormat="dd/MM/yyyy"
-                isClearable
-                popperPlacement="bottom-start"
-                popperClassName="z-[9999]"
-                wrapperClassName="w-full"
-                usePortal
-                minDate={new Date()}
-                popperModifiers={[
-                  {
-                    name: "offset",
-                    options: {
-                      offset: [0, 12],
-                    },
-                  },
-                  {
-                    name: "preventOverflow",
-                    options: {
-                      boundary: "viewport",
-                    },
-                  },
-                  {
-                    name: "flip",
-                    options: {
-                      enabled: true,
-                    },
-                  },
-                ]}
+                className="h-[39px] w-full border border-gray-300 px-3 rounded-md text-sm text-gray-700"
               />
             </div>
           </form>
@@ -212,19 +222,25 @@ const TasksPage = () => {
                 </thead>
                 <tbody>
                   {tasksResponse?.data.map((task: Task) => {
-                    const isCompleted = completedMap[task.id] || false;
+                    const isUpdating = updatingTaskIds.includes(task.id);
+                    // const isCompleted = isUpdating
+                    //   ? task.status !== "Done"
+                    //   : task.status === "Done";
+                    const isCompleted = task.status === "Done";
+
                     return (
                       <tr key={task.id} className="border-t">
                         <td className="p-3">
                           <input
                             type="checkbox"
                             checked={isCompleted}
-                            onChange={() => toggleCompleted(task.id)}
+                            disabled={isUpdating}
+                            onChange={() => handleToggleStatus(task)}
                           />
                         </td>
                         <td
-                          className={`p-3 font-medium ${
-                            isCompleted ? "line-through text-gray-400" : ""
+                          className={`p-3 font-bold ${
+                            isCompleted ? "line-through text-gray-600" : ""
                           }`}
                         >
                           {task.title}
@@ -280,10 +296,8 @@ const TasksPage = () => {
                   <button
                     key={idx}
                     onClick={() => setPage(idx + 1)}
-                    className={`px-3 py-1 text-base font-medium rounded ${
-                      page === idx + 1
-                        ? "text-lg font-semibold"
-                        : "text-gray-800"
+                    className={`px-3 py-1 text-base font-medium text-gray-800 rounded ${
+                      page === idx + 1 ? "text-lg font-bold" : "text-gray-400"
                     }`}
                   >
                     {idx + 1}

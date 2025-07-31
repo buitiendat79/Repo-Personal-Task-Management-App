@@ -31,6 +31,6 @@ export interface TaskInput {
 }
 
 export interface TaskFilter {
-  status: "all" | "active" | "completed";
+  status: "all" | Status;
   priority?: Priority;
 }

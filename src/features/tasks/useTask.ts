@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createTask,
   fetchTasks,
@@ -6,6 +6,7 @@ import {
   updateTask,
   deleteTask,
   updateCompleted,
+  updateTaskStatus,
 } from "../../api/taskApi";
 import { TaskInput } from "../../types/task";
 
@@ -65,13 +66,38 @@ export const useDeleteTask = () => {
 };
 
 export const useToggleTaskCompleted = () => {
+  const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       taskId,
       completed,
     }: {
       taskId: string;
       completed: boolean;
-    }) => updateCompleted(taskId, completed),
+    }) => {
+      await updateCompleted(taskId, completed);
+      const newStatus = completed ? "done" : "todo";
+      await updateTaskStatus(taskId, newStatus);
+    },
+    onSuccess: (_, variables) => {
+      // Refetch danh sách task sau khi cập nhật
+      queryClient.invalidateQueries({
+        queryKey: ["tasks"],
+        exact: false,
+      });
+
+      // Ngoài ra nếu có query cụ thể task thì refetch luôn
+      queryClient.invalidateQueries({
+        queryKey: ["task", variables.taskId],
+      });
+    },
+  });
+};
+
+export const useUpdateTaskStatus = () => {
+  return useMutation({
+    mutationFn: ({ taskId, status }: { taskId: string; status: string }) =>
+      updateTaskStatus(taskId, status),
   });
 };

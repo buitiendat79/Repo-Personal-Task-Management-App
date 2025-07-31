@@ -10,10 +10,10 @@ export default function EditTaskPage() {
   const { data: task, isLoading, error, isError } = useTask(taskId || "");
 
   useEffect(() => {
-    if (isError || !task) {
+    if (!isLoading && (isError || !task)) {
       notifyError("Có lỗi xảy ra khi tải task. Vui lòng thử lại sau.");
     }
-  }, [isError, task]);
+  }, [isError, task, isLoading]);
 
   if (isLoading) {
     return <p className="text-center mt-10">Đang tải task...</p>;

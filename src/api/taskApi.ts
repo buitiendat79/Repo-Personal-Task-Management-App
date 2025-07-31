@@ -2,8 +2,22 @@ import { supabase } from "./supabaseClient";
 import { Task, TaskInput } from "../types/task";
 
 // Tạo task mới
+// export const createTask = async (task: TaskInput) => {
+//   const { data, error } = await supabase.from("tasks").insert(task).select();
+//   if (error) throw error;
+//   return data;
+// };
 export const createTask = async (task: TaskInput) => {
-  const { data, error } = await supabase.from("tasks").insert(task).select();
+  const taskWithDefaultStatus = {
+    ...task,
+    status: task.status ?? "To Do",
+  };
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .insert(taskWithDefaultStatus)
+    .select();
+
   if (error) throw error;
   return data;
 };
@@ -23,8 +37,15 @@ export const fetchTasks = async (
     .select("*", { count: "exact" })
     .eq("user_id", userId);
 
+  // if (status && status !== "all") {
+  //   query = query.eq("status", status);
+  // }
   if (status && status !== "all") {
-    query = query.eq("status", status);
+    if (status === "incomplete") {
+      query = query.in("status", ["To Do", "In Progress"]);
+    } else {
+      query = query.eq("status", status);
+    }
   }
 
   if (priority && priority !== "all") {
@@ -98,4 +119,13 @@ export const updateCompleted = async (taskId: string, completed: boolean) => {
   if (error) {
     throw new Error(error.message);
   }
+};
+
+export const updateTaskStatus = async (taskId: string, status: string) => {
+  const { error } = await supabase
+    .from("tasks")
+    .update({ status })
+    .eq("id", taskId);
+
+  if (error) throw error;
 };
