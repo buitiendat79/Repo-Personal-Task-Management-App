@@ -1,6 +1,6 @@
 import { supabase } from "./supabaseClient";
 import { Task, TaskInput } from "../types/task";
-
+import dayjs from "dayjs";
 // Tạo task mới
 // export const createTask = async (task: TaskInput) => {
 //   const { data, error } = await supabase.from("tasks").insert(task).select();
@@ -53,7 +53,8 @@ export const fetchTasks = async (
   }
 
   if (deadline) {
-    query = query.eq("deadline", deadline);
+    const formattedDeadline = dayjs(deadline).format("YYYY-MM-DD");
+    query = query.eq("deadline", formattedDeadline);
   }
 
   if (search) {

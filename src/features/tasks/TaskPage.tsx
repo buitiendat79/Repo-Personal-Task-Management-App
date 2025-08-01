@@ -21,12 +21,7 @@ const TasksPage = () => {
   const [priority, setPriority] = useState("all");
   const [search, setSearch] = useState("");
   const [endDate, setEndDate] = useState<Date | null>(null);
-  const [endDateError, setEndDateError] = useState<string | null>(null);
-
   const [page, setPage] = useState(1);
-  // const [filterError, setFilterError] = useState(""); //
-  // const [completedMap, setCompletedMap] = useState<Record<string, boolean>>({});
-  // const { mutate: toggleTaskCompleted } = useToggleTaskCompleted();
   const { mutate: updateTaskStatus } = useUpdateTaskStatus();
   const [updatingTaskIds, setUpdatingTaskIds] = useState<string[]>([]);
 
@@ -39,7 +34,7 @@ const TasksPage = () => {
     userId,
     status,
     priority,
-    endDate ? endDate.toISOString().split("T")[0] : "",
+    endDate ? dayjs(endDate).format("YYYY-MM-DD") : "",
     search,
     page,
     LIMIT
@@ -49,11 +44,6 @@ const TasksPage = () => {
 
   const handleEndDateChange = (date: Date | null) => {
     setEndDate(date);
-    if (date && dayjs(date).isBefore(dayjs(), "day")) {
-      setEndDateError("Ngày không hợp lệ");
-    } else {
-      setEndDateError(null);
-    }
   };
 
   const handleToggleStatus = (task: Task) => {
@@ -68,7 +58,6 @@ const TasksPage = () => {
           refetch();
         },
         onSettled: () => {
-          // Xóa task khỏi danh sách đang cập nhật
           setUpdatingTaskIds((prev) => prev.filter((id) => id !== task.id));
         },
       }
@@ -91,33 +80,7 @@ const TasksPage = () => {
     }
   };
 
-  // const toggleCompleted = (task: Task) => {
-  //   const newCompleted = !task.completed;
-  //   const newStatus = newCompleted ? "Done" : "To Do";
-
-  //   toggleTaskCompleted({
-  //     taskId: task.id,
-  //     completed: newCompleted,
-  //   });
-
-  //   updateTaskStatus({
-  //     taskId: task.id,
-  //     status: newStatus,
-  //   });
-  // };
-
-  // const toggleCompleted = (task: Task) => {
-  //   const isCurrentlyDone = task.status === "Done";
-  //   const newStatus = isCurrentlyDone ? "To Do" : "Done";
-
-  //   updateTaskStatus({
-  //     taskId: task.id,
-  //     status: newStatus,
-  //   });
-  // };
-
   const showErrorMessage = () => {
-    if (endDateError) return endDateError;
     if (isError) return "Có lỗi xảy ra, vui lòng thử lại sau";
     if (tasksResponse && tasksResponse.data.length === 0)
       return "Không tìm thấy task nào phù hợp với điều kiện lọc/tìm kiếm";
@@ -185,7 +148,7 @@ const TasksPage = () => {
                 onChange={handleEndDateChange}
                 placeholderText="Đến ngày"
                 dateFormat="dd/MM/yyyy"
-                className="h-[39px] w-full border border-gray-300 px-3 rounded-md text-sm text-gray-700"
+                className="h-[39px] w-full border border px-3 rounded text-sm text-gray-500"
               />
             </div>
           </form>
@@ -203,7 +166,7 @@ const TasksPage = () => {
               />
             </div>
           ) : (
-            <div className="border rounded overflow-hidden bg-white">
+            <div className="border rounded overflow-hidden bg-white min-h-[600px] flex flex-col justify-between">
               <table className="w-full table-fixed text-sm">
                 <thead className="bg-white text-left border-b">
                   <tr className="text-sm text-gray-800">
@@ -277,7 +240,11 @@ const TasksPage = () => {
                       length: LIMIT - tasksResponse.data.length,
                     }).map((_, idx) => (
                       <tr key={`empty-${idx}`} className="border-t h-[52px]">
-                        <td colSpan={5}></td>
+                        <td className="p-3">&nbsp;</td>
+                        <td className="p-3">&nbsp;</td>
+                        <td className="p-3">&nbsp;</td>
+                        <td className="p-3">&nbsp;</td>
+                        <td className="p-3 text-center">&nbsp;</td>
                       </tr>
                     ))}
                 </tbody>

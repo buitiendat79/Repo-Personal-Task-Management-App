@@ -87,7 +87,6 @@ export const useToggleTaskCompleted = () => {
         exact: false,
       });
 
-      // Ngoài ra nếu có query cụ thể task thì refetch luôn
       queryClient.invalidateQueries({
         queryKey: ["task", variables.taskId],
       });
