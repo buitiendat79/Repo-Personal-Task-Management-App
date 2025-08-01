@@ -3,7 +3,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import TasksPage from "./TaskPage";
 import { TestProviders } from "../../test/TestProviders";
 import { useUser } from "@supabase/auth-helpers-react";
+import { useTasks } from "./useTask";
 
+// Mock Supabase user
 vi.mock("@supabase/auth-helpers-react", async () => {
   const actual = await vi.importActual("@supabase/auth-helpers-react");
   return {
@@ -12,15 +14,18 @@ vi.mock("@supabase/auth-helpers-react", async () => {
   };
 });
 
+// Mock useUpdateTaskStatus
+const mockUpdateTaskStatus = vi.fn();
+
 vi.mock("./useTask", () => ({
   useTasks: () => ({
     data: {
-      total: 1,
+      total: 10,
       data: [
         {
           id: "task-1",
           title: "Task mock",
-          is_completed: false,
+          status: "To Do",
           priority: "High",
           deadline: "2025-08-01T00:00:00.000Z",
         },
@@ -28,6 +33,10 @@ vi.mock("./useTask", () => ({
     },
     isLoading: false,
     isError: false,
+    refetch: vi.fn(),
+  }),
+  useUpdateTaskStatus: () => ({
+    mutate: mockUpdateTaskStatus,
   }),
 }));
 
@@ -79,51 +88,35 @@ describe("TasksPage", () => {
     expect(prioritySelect).toHaveValue("High");
   });
 
-  it("chọn checkbox task đầu tiên và hiển thị gạch ngang", async () => {
+  it("nhấn checkbox sẽ gọi updateTaskStatus", async () => {
     render(
       <TestProviders>
         <TasksPage />
       </TestProviders>
     );
 
-    await waitFor(() => {
-      expect(screen.getAllByRole("checkbox").length).toBeGreaterThan(0);
-    });
-
-    const checkbox = screen.getAllByRole("checkbox")[0];
+    const checkbox = await screen.findByRole("checkbox");
     fireEvent.click(checkbox);
 
-    expect(checkbox).toBeChecked();
+    await waitFor(() => {
+      expect(mockUpdateTaskStatus).toHaveBeenCalledWith(
+        { taskId: "task-1", status: "Done" },
+        expect.any(Object)
+      );
+    });
   });
 
-  it("hiển thị thông báo nếu không có task nào", async () => {
+  it("phân trang hiển thị khi có nhiều task", async () => {
     render(
       <TestProviders>
         <TasksPage />
       </TestProviders>
     );
 
-    await waitFor(() => {
-      const msg = screen.queryByText(/Không tìm thấy task nào phù hợp/i);
-      if (msg) {
-        expect(msg).toBeInTheDocument();
-      }
+    const pageButtons = await screen.findAllByRole("button", {
+      name: /^[0-9]+$/,
     });
-  });
 
-  it("phân trang hoạt động nếu có nhiều task", async () => {
-    render(
-      <TestProviders>
-        <TasksPage />
-      </TestProviders>
-    );
-
-    await waitFor(() => {
-      const pageButtons = screen.queryAllByRole("button", { name: /^[0-9]+$/ });
-      if (pageButtons.length > 1) {
-        fireEvent.click(pageButtons[1]);
-        expect(pageButtons[1]).toHaveClass("text-lg");
-      }
-    });
+    expect(pageButtons.length).toBeGreaterThan(1);
   });
 });
