@@ -3,16 +3,17 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { TaskInput, Priority } from "../../types/task";
 import { useCreateTask } from "../../features/tasks/useTask";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { notifySuccess, notifyError } from "../../utils/notify";
 import { useUser } from "@supabase/auth-helpers-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { fetchTaskById, updateTask } from "../../api/taskApi";
 
 type TaskFormProps = {
   mode?: "create" | "edit"; // Chế độ form: tạo mới hoặc sửa task
   onSuccess?: () => void; // Callback khi thao tác thành công
   onDelete?: () => void; // Callback khi xoá task
-  initialData?: TaskInput; // Dữ liệu khởi tạo form (dùng khi edit)
+  // initialData?: TaskInput; // Dữ liệu khởi tạo form (dùng khi edit)
 };
 
 // Set ngày mặc định
@@ -53,11 +54,12 @@ const schema = yup.object().shape({
 export default function TaskForm({
   mode = "create",
   onSuccess,
-  // onDelete,
-  initialData,
-}: TaskFormProps) {
+  onDelete,
+}: // initialData,
+TaskFormProps) {
   const navigate = useNavigate();
   const user = useUser();
+  const { taskId } = useParams();
 
   const { mutate: createTask, isPending: creating } = useCreateTask();
 
@@ -73,8 +75,9 @@ export default function TaskForm({
     formState: { errors, isValid },
     control,
     trigger,
+    reset,
   } = useForm<TaskInput>({
-    defaultValues: initialData || {
+    defaultValues: {
       title: "",
       description: "",
       deadline: today,
@@ -84,6 +87,34 @@ export default function TaskForm({
     resolver: yupResolver(schema),
     mode: "onChange", // Validate realtime
   });
+
+  useEffect(() => {
+    if (mode === "edit" && taskId) {
+      (async () => {
+        try {
+          const task = await fetchTaskById(taskId);
+          if (task) {
+            console.log("Dữ liệu task:", task);
+            reset({
+              title: task.title || "",
+              description: task.description || "",
+              deadline: task.deadline?.split("T")[0] || today,
+              priority: task.priority || "",
+              checklist: Array.isArray(task.checklist)
+                ? task.checklist.map((item) => ({
+                    content: item.content || "",
+                    checked: item.checked ?? false,
+                  }))
+                : [],
+            });
+          }
+        } catch (error) {
+          console.error("Lỗi khi tải task:", error);
+          notifyError("Không tải được dữ liệu task.");
+        }
+      })();
+    }
+  }, [mode, taskId, reset]);
 
   // Quản lý mảng checklist với useFieldArray
   const {
@@ -111,8 +142,21 @@ export default function TaskForm({
           onError: (err) => notifyError("Tạo task thất bại! " + err.message),
         }
       );
-    } else {
-      // Edit mode
+    } else if (mode === "edit" && taskId) {
+      setUpdating(true);
+      updateTask(taskId, data)
+        .then(() => {
+          notifySuccess("Cập nhật task thành công!");
+          onSuccess?.();
+          navigate("/tasks");
+        })
+        .catch((err) => {
+          console.error("Lỗi khi cập nhật:", err);
+          notifyError("Cập nhật task thất bại! " + err.message);
+        })
+        .finally(() => {
+          setUpdating(false);
+        });
     }
   };
 
@@ -157,47 +201,101 @@ export default function TaskForm({
         )}
       </div>
 
-      <div>
-        <label htmlFor="deadline" className="block mb-1 font-medium">
-          Deadline
-        </label>
-        <input
-          id="deadline"
-          type="date"
-          {...register("deadline")}
-          className="w-full border rounded p-2 text-sm appearance-none focus:outline-none focus:border-gray-400"
-          min={today}
-        />
-        {errors.deadline && (
-          <p className="text-red-500 text-sm mt-1" data-testid="error-deadline">
-            {errors.deadline.message}
-          </p>
-        )}
-      </div>
+      {/* Deadline */}
+      {mode === "create" ? (
+        <div>
+          <label htmlFor="deadline" className="block mb-1 font-medium">
+            Deadline
+          </label>
+          <input
+            id="deadline"
+            type="date"
+            {...register("deadline")}
+            className="w-full border rounded p-2 text-sm appearance-none focus:outline-none focus:border-gray-400"
+            min={today}
+          />
+          {errors.deadline && (
+            <p
+              className="text-red-500 text-sm mt-1"
+              data-testid="error-deadline"
+            >
+              {errors.deadline.message}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="flex items-center justify-between mb-4">
+          <label htmlFor="deadline" className="font-medium">
+            Deadline
+          </label>
+          <input
+            id="deadline"
+            type="date"
+            {...register("deadline")}
+            className="w-[200px] border rounded p-2 text-sm appearance-none focus:outline-none focus:border-gray-400"
+            min={today}
+          />
+          {errors.deadline && (
+            <p
+              className="text-red-500 text-sm mt-1 text-right"
+              data-testid="error-deadline"
+            >
+              {errors.deadline.message}
+            </p>
+          )}
+        </div>
+      )}
 
-      <div>
-        <label htmlFor="priority" className="block mb-1 font-medium">
-          Ưu tiên
-        </label>
-        <select
-          id="priority"
-          {...register("priority")}
-          className="w-full border rounded p-2"
-        >
-          <option value="">-- Chọn mức ưu tiên --</option>
-          <option value="Low">Low</option>
-          <option value="Medium">Medium</option>
-          <option value="High">High</option>
-        </select>
-        {errors.priority && (
-          <p
-            className="text-red-500 text-sm mt-1"
-            data-testid="priority-select"
+      {/* Ưu tiên */}
+      {mode === "create" ? (
+        <div>
+          <label htmlFor="priority" className="block mb-1 font-medium">
+            Ưu tiên
+          </label>
+          <select
+            id="priority"
+            {...register("priority")}
+            className="w-full border rounded p-2"
           >
-            {errors.priority.message}
-          </p>
-        )}
-      </div>
+            <option value="">-- Chọn mức ưu tiên --</option>
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+          </select>
+          {errors.priority && (
+            <p
+              className="text-red-500 text-sm mt-1"
+              data-testid="priority-select"
+            >
+              {errors.priority.message}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="flex items-center justify-between mb-4">
+          <label htmlFor="priority" className="font-medium">
+            Ưu tiên
+          </label>
+          <select
+            id="priority"
+            {...register("priority")}
+            className="w-[200px] border rounded p-2 text-sm"
+          >
+            <option value="">-- Chọn mức ưu tiên --</option>
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+          </select>
+          {errors.priority && (
+            <p
+              className="text-red-500 text-sm mt-1 text-right"
+              data-testid="priority-select"
+            >
+              {errors.priority.message}
+            </p>
+          )}
+        </div>
+      )}
 
       <div>
         <label className="block mb-1 font-medium">Checklist</label>
@@ -291,24 +389,9 @@ export default function TaskForm({
         ) : (
           <>
             {/* Edit mode */}
-            {/* <button
-              type="button"
-              onClick={() => navigate("/tasks")}
-              className="w-[140px] py-2 border border-gray-400 text-gray-700 bg-white rounded-md hover:bg-gray-100 font-semibold"
-            >
-              Huỷ
-            </button> */}
 
-            {/* <button
-              type="button"
-              onClick={() => setShowConfirmDelete(true)}
-              disabled={deleting}
-              className="w-[140px] py-2 border border-red-500 text-red-600 rounded-md hover:bg-red-50 font-semibold"
-            >
-              {deleting ? "Đang xoá..." : "Xoá task"}
-            </button> */}
-
-            {/* <button
+            {/* Nút cập nhật */}
+            <button
               type="submit"
               disabled={!isValid || updating}
               className={`w-[140px] py-2 rounded-md text-white font-semibold transition ${
@@ -318,7 +401,26 @@ export default function TaskForm({
               }`}
             >
               {updating ? "Đang cập nhật..." : "Cập nhật"}
-            </button> */}
+            </button>
+
+            {/* Nút Xóa */}
+            <button
+              type="button"
+              onClick={() => setShowConfirmDelete(true)}
+              disabled={deleting}
+              className="w-[140px] py-2 border border-red-500 text-red-600 rounded-md hover:bg-red-50 font-semibold"
+            >
+              {deleting ? "Đang xoá..." : "Xoá task"}
+            </button>
+
+            {/* Nút Hủy */}
+            <button
+              type="button"
+              onClick={() => navigate("/tasks")}
+              className="w-[140px] py-2 border border-gray-400 text-gray-700 bg-white rounded-md hover:bg-gray-100 font-semibold"
+            >
+              Huỷ
+            </button>
           </>
         )}
       </div>
