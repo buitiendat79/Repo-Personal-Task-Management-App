@@ -4,6 +4,7 @@ import TaskForm from "../../components/TaskForm/index";
 import { Task } from "../../types/task";
 import { notifyError } from "../../utils/notify";
 import { useEffect } from "react";
+import DashboardLayout from "../../layout/DashboardLayout";
 
 export default function EditTaskPage() {
   const { taskId } = useParams();
@@ -28,8 +29,10 @@ export default function EditTaskPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-20 px-4">
-      <TaskForm mode="edit" defaultValues={task as Task} />
-    </div>
+    <DashboardLayout>
+      <div className="min-h-screen bg-gray-200 py-20 px-4">
+        <TaskForm mode="edit" defaultValues={task as Task} />
+      </div>
+    </DashboardLayout>
   );
 }

@@ -1,13 +1,15 @@
 import { useForm, useFieldArray } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { TaskInput, Priority } from "../../types/task";
-import { useCreateTask } from "../../features/tasks/useTask";
+import { TaskInput, Priority, Status } from "../../types/task";
+import { useCreateTask, useDeleteTask } from "../../features/tasks/useTask";
 import { useNavigate, useParams } from "react-router-dom";
 import { notifySuccess, notifyError } from "../../utils/notify";
 import { useUser } from "@supabase/auth-helpers-react";
 import { useState, useEffect } from "react";
 import { fetchTaskById, updateTask } from "../../api/taskApi";
+import { formatDate } from "../../utils/date";
+import { supabase } from "../../api/supabaseClient";
 
 type TaskFormProps = {
   mode?: "create" | "edit"; // Chế độ form: tạo mới hoặc sửa task
@@ -19,38 +21,6 @@ type TaskFormProps = {
 // Set ngày mặc định
 const today = new Date().toISOString().split("T")[0];
 
-// Validation schema Yup
-const schema = yup.object().shape({
-  title: yup
-    .string()
-    .required("Vui lòng nhập tên task")
-    .max(100, "Tên task không được quá dài")
-    .test(
-      "not-empty",
-      "Tên task không được toàn khoảng trắng",
-      (value) => value?.trim() !== ""
-    ),
-  description: yup.string().max(500, "Mô tả không được quá dài").optional(),
-  deadline: yup
-    .string()
-    .required("Vui lòng chọn deadline")
-    .test("valid-date", "Deadline không hợp lệ", (value) =>
-      value ? value >= today : false
-    ),
-  priority: yup.string().required("Vui lòng chọn mức ưu tiên"),
-  checklist: yup
-    .array()
-    .of(
-      yup.object().shape({
-        content: yup
-          .string()
-          .required("Checklist không được để trống")
-          .max(100, "Checklist không được quá dài"),
-      })
-    )
-    .optional(),
-});
-
 export default function TaskForm({
   mode = "create",
   onSuccess,
@@ -61,12 +31,48 @@ TaskFormProps) {
   const user = useUser();
   const { taskId } = useParams();
 
+  // Validation schema Yup
+  const schema = yup.object().shape({
+    title: yup
+      .string()
+      .required("Vui lòng nhập tên task")
+      .max(100, "Tên task không được quá dài")
+      .test(
+        "not-empty",
+        "Tên task không được toàn khoảng trắng",
+        (value) => value?.trim() !== ""
+      ),
+    description: yup.string().max(500, "Mô tả không được quá dài").optional(),
+    deadline: yup
+      .string()
+      .required("Vui lòng chọn deadline")
+      .test("valid-date", "Deadline không hợp lệ", (value) =>
+        value ? value >= today : false
+      ),
+    priority: yup.string().required("Vui lòng chọn mức ưu tiên"),
+    checklist: yup
+      .array()
+      .of(
+        yup.object().shape({
+          content: yup
+            .string()
+            .required("Checklist không được để trống")
+            .max(100, "Checklist không được quá dài"),
+        })
+      )
+      .optional(),
+    ...(mode === "edit" && {
+      status: yup.string().required("Vui lòng chọn trạng thái"),
+    }),
+  });
+
   const { mutate: createTask, isPending: creating } = useCreateTask();
+  const { mutate: deleteTask } = useDeleteTask();
 
   // State xoá/cập nhật (Edit mode)
-  const [deleting, setDeleting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [updating, setUpdating] = useState(false);
-  // const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
   // Khởi tạo react-hook-form
   const {
@@ -83,9 +89,12 @@ TaskFormProps) {
       deadline: today,
       priority: "",
       checklist: [],
+      status: "To Do",
     },
     resolver: yupResolver(schema),
     mode: "onChange", // Validate realtime
+    reValidateMode: "onChange", // Đảm bảo validate lại khi form cập nhật
+    shouldUnregister: true, // Giúp tránh lỗi validate khi field bị ẩn
   });
 
   useEffect(() => {
@@ -106,7 +115,9 @@ TaskFormProps) {
                     checked: item.checked ?? false,
                   }))
                 : [],
+              status: task.status || "To Do",
             });
+            setTimeout(() => trigger(), 0);
           }
         } catch (error) {
           console.error("Lỗi khi tải task:", error);
@@ -160,6 +171,27 @@ TaskFormProps) {
     }
   };
 
+  const handleConfirmDelete = () => {
+    if (!taskId) return;
+
+    setIsDeleting(true);
+
+    deleteTask(taskId, {
+      onSuccess: () => {
+        notifySuccess("Xoá task thành công!");
+        navigate("/tasks");
+      },
+      onError: (err) => {
+        notifyError("Xoá task thất bại!");
+        console.error(err);
+      },
+      onSettled: () => {
+        setIsDeleting(false);
+        setShowConfirmDelete(false);
+      },
+    });
+  };
+
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
@@ -169,6 +201,26 @@ TaskFormProps) {
         {mode === "create" ? "Tạo mới Task" : "Cập nhật Task"}
       </h2>
 
+      {mode === "edit" && (
+        <div>
+          <label htmlFor="status" className="block mb-1 font-medium">
+            Trạng thái
+          </label>
+          <select
+            id="status"
+            {...register("status")}
+            className="w-[200px] border rounded p-2"
+          >
+            <option value="To Do">Chưa hoàn thành</option>
+            <option value="In Progress">Đang làm</option>
+            <option value="Done">Đã hoàn thành</option>
+          </select>
+          {errors.status && (
+            <p className="text-red-500 text-sm mt-1">{errors.status.message}</p>
+          )}
+        </div>
+      )}
+
       <div>
         <label htmlFor="title" className="block mb-1 font-medium">
           Tên task
@@ -176,7 +228,7 @@ TaskFormProps) {
         <input
           id="title"
           {...register("title")}
-          className="w-full border rounded p-2"
+          className="w-full border rounded p-2 text-sm"
         />
         {errors.title && (
           <p className="text-red-500 text-sm mt-1" data-testid="error-title">
@@ -224,17 +276,19 @@ TaskFormProps) {
           )}
         </div>
       ) : (
-        <div className="flex items-center justify-between mb-4">
-          <label htmlFor="deadline" className="font-medium">
-            Deadline
-          </label>
-          <input
-            id="deadline"
-            type="date"
-            {...register("deadline")}
-            className="w-[200px] border rounded p-2 text-sm appearance-none focus:outline-none focus:border-gray-400"
-            min={today}
-          />
+        <div className="mb-4">
+          <div className="flex items-center justify-between">
+            <label htmlFor="deadline" className="font-medium">
+              Deadline
+            </label>
+            <input
+              id="deadline"
+              type="date"
+              {...register("deadline")}
+              className="w-[200px] border rounded p-2 text-sm appearance-none focus:outline-none focus:border-gray-400"
+              min={today}
+            />
+          </div>
           {errors.deadline && (
             <p
               className="text-red-500 text-sm mt-1 text-right"
@@ -407,10 +461,9 @@ TaskFormProps) {
             <button
               type="button"
               onClick={() => setShowConfirmDelete(true)}
-              disabled={deleting}
-              className="w-[140px] py-2 border border-red-500 text-red-600 rounded-md hover:bg-red-50 font-semibold"
+              className="w-[140px] border border-red-500 text-red-500 px-4 py-2 rounded-md hover:bg-red-100"
             >
-              {deleting ? "Đang xoá..." : "Xoá task"}
+              Xoá task
             </button>
 
             {/* Nút Hủy */}
@@ -424,6 +477,35 @@ TaskFormProps) {
           </>
         )}
       </div>
+      {showConfirmDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm text-center">
+            <h2 className="text-lg font-semibold mb-4">
+              Bạn có chắc chắn muốn xoá task này không?
+            </h2>
+            <h2 className="text-lg font-semibold mb-4">
+              Hành động ngày không thể hoàn tác
+            </h2>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                className="px-4 py-2 border rounded-md hover:bg-gray-100"
+                onClick={() => setShowConfirmDelete(false)}
+              >
+                Huỷ
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 disabled:opacity-50"
+                disabled={isDeleting}
+                onClick={handleConfirmDelete}
+              >
+                {isDeleting ? "Đang xoá..." : "Xoá"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

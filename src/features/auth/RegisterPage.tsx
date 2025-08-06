@@ -139,7 +139,7 @@ export default function RegisterPage() {
         "Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản."
       );
       setTimeout(() => {
-        navigate("/login");
+        navigate("/");
       }, 1000);
     }
 
