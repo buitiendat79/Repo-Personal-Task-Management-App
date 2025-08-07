@@ -286,16 +286,9 @@ TaskFormProps) {
               <div className="w-full">
                 <DatePicker
                   id="deadline"
-                  selected={
-                    field.value
-                      ? dayjs(field.value, "DD/MM/YYYY").toDate()
-                      : null
-                  }
+                  selected={field.value || null}
                   onChange={(date) => {
-                    const formatted = date
-                      ? dayjs(date).format("DD/MM/YYYY")
-                      : "";
-                    field.onChange(formatted);
+                    field.onChange(date); // lưu trực tiếp Date object
                   }}
                   dateFormat="dd/MM/yyyy"
                   calendarClassName="z-50"
