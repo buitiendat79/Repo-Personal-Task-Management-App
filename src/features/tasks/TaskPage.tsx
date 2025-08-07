@@ -11,7 +11,7 @@ import { Loader2 } from "lucide-react";
 import { useUpdateTaskStatus } from "./useTask";
 import DashboardLayout from "../../layout/DashboardLayout";
 
-const LIMIT = 8;
+const LIMIT = 9;
 
 const TasksPage = () => {
   const user = useUser();

@@ -10,6 +10,11 @@ import { useState, useEffect } from "react";
 import { fetchTaskById, updateTask } from "../../api/taskApi";
 import { formatDate } from "../../utils/date";
 import { supabase } from "../../api/supabaseClient";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { Controller } from "react-hook-form";
+import dayjs from "dayjs";
+import CustomDateInput from "../CustomDateInput";
 
 type TaskFormProps = {
   mode?: "create" | "edit"; // Chế độ form: tạo mới hoặc sửa task
@@ -43,12 +48,21 @@ TaskFormProps) {
         (value) => value?.trim() !== ""
       ),
     description: yup.string().max(500, "Mô tả không được quá dài").optional(),
+    // deadline: yup
+    //   .string()
+    //   .required("Vui lòng chọn deadline")
+    //   .test("valid-date", "Deadline không hợp lệ", (value) =>
+    //     // value ? value >= today : false
+    //   ),
     deadline: yup
       .string()
       .required("Vui lòng chọn deadline")
-      .test("valid-date", "Deadline không hợp lệ", (value) =>
-        value ? value >= today : false
-      ),
+      .test("valid-date", "Deadline không hợp lệ", (value) => {
+        if (!value) return false;
+        const date = dayjs(value, "DD/MM/YYYY");
+        return date.isValid() && date.isAfter(dayjs().subtract(1, "day"));
+      }),
+
     priority: yup.string().required("Vui lòng chọn mức ưu tiên"),
     checklist: yup
       .array()
@@ -68,11 +82,14 @@ TaskFormProps) {
 
   const { mutate: createTask, isPending: creating } = useCreateTask();
   const { mutate: deleteTask } = useDeleteTask();
+  const [isSecondModalOpen, setIsSecondModalOpen] = useState(false);
 
   // State xoá/cập nhật (Edit mode)
   const [isDeleting, setIsDeleting] = useState(false);
   const [updating, setUpdating] = useState(false);
-  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  // const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [showFirstConfirm, setShowFirstConfirm] = useState(false); // Bước 1
+  const [showSecondConfirm, setShowSecondConfirm] = useState(false); // Bước 2
 
   // Khởi tạo react-hook-form
   const {
@@ -86,7 +103,7 @@ TaskFormProps) {
     defaultValues: {
       title: "",
       description: "",
-      deadline: today,
+      deadline: dayjs().format("DD/MM/YYYY"),
       priority: "",
       checklist: [],
       status: "To Do",
@@ -107,7 +124,9 @@ TaskFormProps) {
             reset({
               title: task.title || "",
               description: task.description || "",
-              deadline: task.deadline?.split("T")[0] || today,
+              deadline: task.deadline
+                ? dayjs(task.deadline).format("DD/MM/YYYY")
+                : dayjs().format("DD/MM/YYYY"),
               priority: task.priority || "",
               checklist: Array.isArray(task.checklist)
                 ? task.checklist.map((item) => ({
@@ -209,7 +228,7 @@ TaskFormProps) {
           <select
             id="status"
             {...register("status")}
-            className="w-[200px] border rounded p-2"
+            className="w-[200px] border rounded p-2 text-sm"
           >
             <option value="To Do">Chưa hoàn thành</option>
             <option value="In Progress">Đang làm</option>
@@ -244,7 +263,7 @@ TaskFormProps) {
         <textarea
           id="description"
           {...register("description")}
-          className="w-full border rounded p-2 resize-none"
+          className="w-full border rounded p-2 resize-none text-sm"
         />
         {errors.description && (
           <p className="text-red-500 text-sm mt-1">
@@ -255,16 +274,37 @@ TaskFormProps) {
 
       {/* Deadline */}
       {mode === "create" ? (
-        <div>
+        <div className="w-full">
           <label htmlFor="deadline" className="block mb-1 font-medium">
             Deadline
           </label>
-          <input
-            id="deadline"
-            type="date"
-            {...register("deadline")}
-            className="w-full border rounded p-2 text-sm appearance-none focus:outline-none focus:border-gray-400"
-            min={today}
+          <Controller
+            name="deadline"
+            control={control}
+            render={({ field }) => (
+              <div className="w-full">
+                <DatePicker
+                  id="deadline"
+                  selected={
+                    field.value
+                      ? dayjs(field.value, "DD/MM/YYYY").toDate()
+                      : null
+                  }
+                  onChange={(date) => {
+                    const formatted = date
+                      ? dayjs(date).format("DD/MM/YYYY")
+                      : "";
+                    field.onChange(formatted);
+                  }}
+                  dateFormat="dd/MM/yyyy"
+                  calendarClassName="z-50"
+                  showPopperArrow={false}
+                  wrapperClassName="w-full"
+                  popperPlacement="bottom-end"
+                  customInput={<CustomDateInput />}
+                />
+              </div>
+            )}
           />
           {errors.deadline && (
             <p
@@ -277,18 +317,48 @@ TaskFormProps) {
         </div>
       ) : (
         <div className="mb-4">
-          <div className="flex items-center justify-between">
-            <label htmlFor="deadline" className="font-medium">
-              Deadline
-            </label>
-            <input
-              id="deadline"
-              type="date"
-              {...register("deadline")}
-              className="w-[200px] border rounded p-2 text-sm appearance-none focus:outline-none focus:border-gray-400"
-              min={today}
+          <label htmlFor="deadline" className="block mb-1 font-medium">
+            Deadline
+          </label>
+          <div className="w-full flex justify-end">
+            <Controller
+              name="deadline"
+              control={control}
+              render={({ field }) => (
+                <DatePicker
+                  id="deadline"
+                  selected={
+                    field.value
+                      ? dayjs(field.value, "DD/MM/YYYY").toDate()
+                      : null
+                  }
+                  onChange={(date) => {
+                    const formatted = date
+                      ? dayjs(date).format("DD/MM/YYYY")
+                      : "";
+                    field.onChange(formatted);
+                  }}
+                  dateFormat="dd/MM/yyyy"
+                  calendarClassName="z-50"
+                  showPopperArrow={false}
+                  popperPlacement="bottom-end"
+                  customInput={
+                    <div className="w-[200px] relative">
+                      <input
+                        className="w-full border rounded p-2 text-sm pr-10 cursor-pointer"
+                        value={field.value}
+                        readOnly
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
+                        📅
+                      </div>
+                    </div>
+                  }
+                />
+              )}
             />
           </div>
+
           {errors.deadline && (
             <p
               className="text-red-500 text-sm mt-1 text-right"
@@ -309,7 +379,7 @@ TaskFormProps) {
           <select
             id="priority"
             {...register("priority")}
-            className="w-full border rounded p-2"
+            className="w-full border rounded p-2 text-sm"
           >
             <option value="">-- Chọn mức ưu tiên --</option>
             <option value="Low">Low</option>
@@ -460,7 +530,7 @@ TaskFormProps) {
             {/* Nút Xóa */}
             <button
               type="button"
-              onClick={() => setShowConfirmDelete(true)}
+              onClick={() => setShowFirstConfirm(true)}
               className="w-[140px] border border-red-500 text-red-500 px-4 py-2 rounded-md hover:bg-red-100"
             >
               Xoá task
@@ -477,20 +547,46 @@ TaskFormProps) {
           </>
         )}
       </div>
-      {showConfirmDelete && (
+      {showFirstConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm text-center">
-            <h2 className="text-lg font-semibold mb-4">
+            <h2 className="text-lg font-semibold mb-6">
               Bạn có chắc chắn muốn xoá task này không?
-            </h2>
-            <h2 className="text-lg font-semibold mb-4">
-              Hành động ngày không thể hoàn tác
             </h2>
             <div className="flex justify-end gap-3">
               <button
                 type="button"
                 className="px-4 py-2 border rounded-md hover:bg-gray-100"
-                onClick={() => setShowConfirmDelete(false)}
+                onClick={() => setShowFirstConfirm(false)}
+              >
+                Không
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                onClick={() => {
+                  setShowFirstConfirm(false);
+                  setShowSecondConfirm(true);
+                }}
+              >
+                Có
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSecondConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm text-center">
+            <h2 className="text-lg font-semibold mb-6">
+              Hành động này không thể hoàn tác
+            </h2>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                className="px-4 py-2 border rounded-md hover:bg-gray-100"
+                onClick={() => setShowSecondConfirm(false)}
               >
                 Huỷ
               </button>

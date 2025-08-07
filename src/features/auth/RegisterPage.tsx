@@ -314,7 +314,7 @@ export default function RegisterPage() {
           {/* Link login */}
           <p className="text-center text-sm mt-4">
             Đã có tài khoản?{" "}
-            <Link to="/login" className="text-blue-600 underline">
+            <Link to="/" className="text-blue-600 underline">
               Đăng nhập
             </Link>
           </p>
