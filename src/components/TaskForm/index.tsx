@@ -15,6 +15,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { Controller } from "react-hook-form";
 import dayjs from "dayjs";
 import CustomDateInput from "../CustomDateInput";
+import { FiCalendar } from "react-icons/fi";
 
 type TaskFormProps = {
   mode?: "create" | "edit"; // Chế độ form: tạo mới hoặc sửa task
@@ -206,7 +207,7 @@ TaskFormProps) {
       },
       onSettled: () => {
         setIsDeleting(false);
-        setShowConfirmDelete(false);
+        setShowSecondConfirm(false);
       },
     });
   };
@@ -317,45 +318,51 @@ TaskFormProps) {
         </div>
       ) : (
         <div className="mb-4">
-          <label htmlFor="deadline" className="block mb-1 font-medium">
-            Deadline
-          </label>
-          <div className="w-full flex justify-end">
+          <div className="grid grid-cols-[auto_1fr] items-center mb-2">
+            <label htmlFor="deadline" className="font-medium w-24">
+              Deadline
+            </label>
+
             <Controller
               name="deadline"
               control={control}
-              render={({ field }) => (
-                <DatePicker
-                  id="deadline"
-                  selected={
-                    field.value
-                      ? dayjs(field.value, "DD/MM/YYYY").toDate()
-                      : null
-                  }
-                  onChange={(date) => {
-                    const formatted = date
-                      ? dayjs(date).format("DD/MM/YYYY")
-                      : "";
-                    field.onChange(formatted);
-                  }}
-                  dateFormat="dd/MM/yyyy"
-                  calendarClassName="z-50"
-                  showPopperArrow={false}
-                  popperPlacement="bottom-end"
-                  customInput={
-                    <div className="w-[200px] relative">
-                      <input
-                        className="w-full border rounded p-2 text-sm pr-10 cursor-pointer"
-                        value={field.value}
-                        readOnly
-                      />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
-                        📅
+              render={({ field }) => {
+                const isValidDate = dayjs(
+                  field.value,
+                  "DD/MM/YYYY",
+                  true
+                ).isValid();
+                return (
+                  <DatePicker
+                    id="deadline"
+                    selected={
+                      isValidDate
+                        ? dayjs(field.value, "DD/MM/YYYY").toDate()
+                        : null
+                    }
+                    onChange={(date) => {
+                      const formatted = date
+                        ? dayjs(date).format("DD/MM/YYYY")
+                        : "";
+                      field.onChange(formatted);
+                    }}
+                    dateFormat="dd/MM/yyyy"
+                    calendarClassName="z-50"
+                    showPopperArrow={false}
+                    popperPlacement="bottom-end"
+                    customInput={
+                      <div className="w-[200px] ml-auto relative">
+                        <input
+                          className="w-full border rounded p-2 text-sm cursor-pointer"
+                          value={field.value || ""}
+                          readOnly
+                        />
+                        <FiCalendar className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
                       </div>
-                    </div>
-                  }
-                />
-              )}
+                    }
+                  />
+                );
+              }}
             />
           </div>
 
