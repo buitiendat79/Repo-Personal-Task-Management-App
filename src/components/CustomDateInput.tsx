@@ -7,10 +7,10 @@ const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
     type="button"
     onClick={onClick}
     ref={ref}
-    className="w-full border border-gray-300 rounded-md px-4 py-2 text-left flex items-center justify-between"
+    className="w-full border border-gray-200 rounded px-4 py-2 text-left flex items-center justify-between"
   >
     <span>{value || ""}</span>
-    <FiCalendar className="text-gray-500" />
+    <FiCalendar className="text-black-800" />
   </button>
 ));
 

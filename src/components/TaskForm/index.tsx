@@ -16,16 +16,27 @@ import { Controller } from "react-hook-form";
 import dayjs from "dayjs";
 import CustomDateInput from "../CustomDateInput";
 import { FiCalendar } from "react-icons/fi";
+import { parse, isValid, format, isBefore, startOfDay } from "date-fns";
 
 type TaskFormProps = {
   mode?: "create" | "edit"; // Chế độ form: tạo mới hoặc sửa task
   onSuccess?: () => void; // Callback khi thao tác thành công
   onDelete?: () => void; // Callback khi xoá task
-  // initialData?: TaskInput; // Dữ liệu khởi tạo form (dùng khi edit)
 };
 
 // Set ngày mặc định
 const today = new Date().toISOString().split("T")[0];
+
+// parse linh hoạt nhiều dạng dd/MM/yyyy hoặc d/M/yyyy
+function parseDDMMToDate(value?: string | null): Date | null {
+  if (!value) return null;
+  const tryFormats = ["dd/MM/yyyy", "d/M/yyyy", "d/MM/yyyy", "dd/M/yyyy"];
+  for (const f of tryFormats) {
+    const d = parse(value, f, new Date());
+    if (isValid(d)) return d;
+  }
+  return null;
+}
 
 export default function TaskForm({
   mode = "create",
@@ -52,16 +63,18 @@ TaskFormProps) {
     // deadline: yup
     //   .string()
     //   .required("Vui lòng chọn deadline")
-    //   .test("valid-date", "Deadline không hợp lệ", (value) =>
-    //     // value ? value >= today : false
-    //   ),
+    //   .test("valid-date", "Deadline không hợp lệ", (value) => {
+    //     if (!value) return false;
+    //     const date = dayjs(value, "DD/MM/YYYY");
+    //     return date.isValid() && date.isAfter(dayjs().subtract(1, "day"));
+    //   }),
+
     deadline: yup
       .string()
       .required("Vui lòng chọn deadline")
       .test("valid-date", "Deadline không hợp lệ", (value) => {
-        if (!value) return false;
-        const date = dayjs(value, "DD/MM/YYYY");
-        return date.isValid() && date.isAfter(dayjs().subtract(1, "day"));
+        const d = parseDDMMToDate(value);
+        return !!d; // Chỉ cần parse ra được là hợp lệ
       }),
 
     priority: yup.string().required("Vui lòng chọn mức ưu tiên"),
@@ -154,7 +167,6 @@ TaskFormProps) {
     remove,
   } = useFieldArray({ control, name: "checklist" });
 
-  // Hàm xử lý submit
   const onSubmit = (data: TaskInput) => {
     if (!user?.id) {
       notifyError("Không tìm thấy thông tin người dùng");
@@ -175,7 +187,21 @@ TaskFormProps) {
       );
     } else if (mode === "edit" && taskId) {
       setUpdating(true);
-      updateTask(taskId, data)
+
+      const payload: any = { ...data };
+
+      if (payload.deadline) {
+        if (payload.deadline instanceof Date) {
+          payload.deadline = format(payload.deadline, "yyyy-MM-dd");
+        } else if (typeof payload.deadline === "string") {
+          const parsed = parseDDMMToDate(payload.deadline);
+          payload.deadline = parsed ? format(parsed, "yyyy-MM-dd") : null;
+        }
+      } else {
+        payload.deadline = null;
+      }
+
+      updateTask(taskId, payload)
         .then(() => {
           notifySuccess("Cập nhật task thành công!");
           onSuccess?.();
@@ -283,21 +309,26 @@ TaskFormProps) {
             name="deadline"
             control={control}
             render={({ field }) => (
-              <div className="w-full">
-                <DatePicker
-                  id="deadline"
-                  selected={field.value || null}
-                  onChange={(date) => {
-                    field.onChange(date); // lưu trực tiếp Date object
-                  }}
-                  dateFormat="dd/MM/yyyy"
-                  calendarClassName="z-50"
-                  showPopperArrow={false}
-                  wrapperClassName="w-full"
-                  popperPlacement="bottom-end"
-                  customInput={<CustomDateInput />}
-                />
-              </div>
+              <DatePicker
+                id="deadline"
+                selected={
+                  field.value
+                    ? typeof field.value === "string"
+                      ? parseDDMMToDate(field.value)
+                      : field.value
+                    : null
+                }
+                onChange={(date) =>
+                  // lưu về string 'dd/MM/yyyy' trong form state để tránh timezone shift
+                  field.onChange(date ? format(date, "dd/MM/yyyy") : "")
+                }
+                dateFormat="dd/MM/yyyy"
+                calendarClassName="z-50"
+                showPopperArrow={false}
+                wrapperClassName="w-full"
+                popperPlacement="bottom-end"
+                customInput={<CustomDateInput />}
+              />
             )}
           />
           {errors.deadline && (
@@ -315,28 +346,24 @@ TaskFormProps) {
             <label htmlFor="deadline" className="font-medium w-24">
               Deadline
             </label>
-
             <Controller
               name="deadline"
               control={control}
               render={({ field }) => {
-                const isValidDate = dayjs(
-                  field.value,
-                  "DD/MM/YYYY",
-                  true
-                ).isValid();
+                const selectedDate =
+                  typeof field.value === "string"
+                    ? parseDDMMToDate(field.value)
+                    : field.value instanceof Date
+                    ? field.value
+                    : null;
+
                 return (
                   <DatePicker
                     id="deadline"
-                    selected={
-                      isValidDate
-                        ? dayjs(field.value, "DD/MM/YYYY").toDate()
-                        : null
-                    }
+                    selected={selectedDate}
                     onChange={(date) => {
-                      const formatted = date
-                        ? dayjs(date).format("DD/MM/YYYY")
-                        : "";
+                      // lưu về string 'dd/MM/yyyy' trong form state
+                      const formatted = date ? format(date, "dd/MM/yyyy") : "";
                       field.onChange(formatted);
                     }}
                     dateFormat="dd/MM/yyyy"
@@ -396,28 +423,34 @@ TaskFormProps) {
           )}
         </div>
       ) : (
-        <div className="flex items-center justify-between mb-4">
-          <label htmlFor="priority" className="font-medium">
+        <div className="flex items-start justify-between mb-4">
+          {/* Label */}
+          <label htmlFor="priority" className="font-medium pt-2">
             Ưu tiên
           </label>
-          <select
-            id="priority"
-            {...register("priority")}
-            className="w-[200px] border rounded p-2 text-sm"
-          >
-            <option value="">-- Chọn mức ưu tiên --</option>
-            <option value="Low">Low</option>
-            <option value="Medium">Medium</option>
-            <option value="High">High</option>
-          </select>
-          {errors.priority && (
-            <p
-              className="text-red-500 text-sm mt-1 text-right"
-              data-testid="priority-select"
+
+          {/* Select + Error */}
+          <div className="flex flex-col items-end w-[200px]">
+            <select
+              id="priority"
+              {...register("priority")}
+              className="border rounded p-2 text-sm w-full"
             >
-              {errors.priority.message}
-            </p>
-          )}
+              <option value="">-- Chọn mức ưu tiên --</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+
+            {errors.priority && (
+              <p
+                className="text-red-500 text-sm mt-1"
+                data-testid="priority-select"
+              >
+                {errors.priority.message}
+              </p>
+            )}
+          </div>
         </div>
       )}
 
