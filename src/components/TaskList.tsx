@@ -1,36 +1,83 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { mockTasks } from "../mocks/tasks";
+import { useUser } from "@supabase/auth-helpers-react";
+import { useTasks, useUpdateTaskStatus } from "../features/tasks/useTask";
+import { Task } from "../types/task";
 
 const PriorityBadge = ({ priority }: { priority: string }) => {
-  const colorMap = {
+  const mapPriorityLabel: Record<string, string> = {
+    High: "Cao",
+    Medium: "Trung bình",
+    Low: "Thấp",
+  };
+
+  const colorMap: Record<string, string> = {
     Cao: "text-red-500",
     "Trung bình": "text-yellow-500",
     Thấp: "text-green-600",
   };
 
-  return (
-    <span className={`font-semibold ${colorMap[priority]}`}>{priority}</span>
-  );
+  const label = mapPriorityLabel[priority] || priority;
+  return <span className={`font-semibold ${colorMap[label]}`}>{label}</span>;
 };
+
+const LIMIT = 5;
+const TOTAL_ROWS = 8;
 
 const TaskList = () => {
   const navigate = useNavigate();
-  const totalRows = 8;
-  const today = new Date();
+  const user = useUser();
 
-  const formatDate = (dateStr: string) => {
+  const { mutate: updateTaskStatus } = useUpdateTaskStatus();
+  const [updatingTaskIds, setUpdatingTaskIds] = useState<string[]>([]);
+
+  const {
+    data: tasksData,
+    isLoading,
+    refetch,
+  } = useTasks(
+    user?.id || "",
+    undefined, // status filter
+    undefined, // priority filter
+    undefined, // deadline filter
+    undefined, // search
+    1, // page
+    LIMIT
+  );
+
+  const tasks: Task[] = Array.isArray(tasksData?.data) ? tasksData.data : [];
+  const emptyRows = TOTAL_ROWS - tasks.length;
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return "";
     const date = new Date(dateStr);
     return date.toLocaleDateString("vi-VN");
   };
 
-  const emptyRows = totalRows - mockTasks.length;
+  const handleToggleStatus = (task: Task) => {
+    const newStatus = task.status === "Done" ? "To Do" : "Done";
+    setUpdatingTaskIds((prev) => [...prev, task.id]);
 
-  const getStatus = (isCompleted: boolean, deadline: string) => {
-    if (isCompleted) return "Hoàn thành";
-    const dl = new Date(deadline);
-    return dl >= today ? "Đang làm" : "Trễ hạn";
+    updateTaskStatus(
+      { taskId: task.id, status: newStatus },
+      {
+        onSuccess: () => {
+          refetch();
+        },
+        onSettled: () => {
+          setUpdatingTaskIds((prev) => prev.filter((id) => id !== task.id));
+        },
+      }
+    );
   };
+
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-2xl p-6 shadow-md">
+        <p>Đang tải...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-md">
@@ -54,42 +101,44 @@ const TaskList = () => {
           </tr>
         </thead>
         <tbody>
-          {mockTasks.map((task) => (
-            <tr key={task.id} className="border-b hover:bg-gray-50">
-              <td className="py-3 px-4 font-semibold text-gray-800">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={task.isCompleted}
-                    readOnly
-                    className="w-4 h-4 rounded"
-                  />
-                  <span>{task.title}</span>
-                </div>
-              </td>
-              <td className="py-3 px-4">
-                <PriorityBadge priority={task.priority} />
-              </td>
-              <td className="py-3 px-4 text-gray-800 font-medium">
-                {formatDate(task.deadline)}
-              </td>
-              <td className="py-3 px-4">
-                <button
-                  type="button"
-                  className="flex items-center gap-1 text-gray-600 font-semibold hover:underline"
-                  onClick={() => navigate(`/tasks/${task.id}`)}
-                >
-                  <span>Xem</span>
-                </button>
-              </td>
-            </tr>
-          ))}
+          {tasks.map((task) => {
+            const completed = task.status === "Done";
+            const isUpdating = updatingTaskIds.includes(task.id);
 
-          {/* {Array.from({ length: emptyRows }).map((_, idx) => (
-            <tr key={`empty-${idx}`} className="border-b h-[56px]">
-              <td colSpan={4} />
-            </tr>
-          ))} */}
+            return (
+              <tr key={task.id} className="border-b hover:bg-gray-50">
+                <td className="py-3 px-4 font-semibold text-gray-800">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={completed}
+                      disabled={isUpdating}
+                      onChange={() => handleToggleStatus(task)}
+                      className="w-4 h-4 rounded"
+                    />
+                    <span className={completed ? "line-through" : ""}>
+                      {task.title}
+                    </span>
+                  </div>
+                </td>
+                <td className="py-3 px-4">
+                  <PriorityBadge priority={task.priority} />
+                </td>
+                <td className="py-3 px-4 text-gray-800 font-medium">
+                  {formatDate(task.deadline)}
+                </td>
+                <td className="py-3 px-4">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 text-gray-600 font-semibold hover:underline"
+                    onClick={() => navigate(`/tasks/${task.id}`)}
+                  >
+                    <span>Xem</span>
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

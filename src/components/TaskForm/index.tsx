@@ -173,18 +173,41 @@ TaskFormProps) {
       return;
     }
 
+    // if (mode === "create") {
+    //   createTask(
+    //     { ...data, user_id: user.id },
+    //     {
+    //       onSuccess: () => {
+    //         notifySuccess("Tạo task thành công!");
+    //         onSuccess?.();
+    //         navigate("/tasks");
+    //       },
+    //       onError: (err) => notifyError("Tạo task thất bại! " + err.message),
+    //     }
+    //   );
+    // }
     if (mode === "create") {
-      createTask(
-        { ...data, user_id: user.id },
-        {
-          onSuccess: () => {
-            notifySuccess("Tạo task thành công!");
-            onSuccess?.();
-            navigate("/tasks");
-          },
-          onError: (err) => notifyError("Tạo task thất bại! " + err.message),
+      const payload: any = { ...data, user_id: user.id };
+
+      if (payload.deadline) {
+        if (payload.deadline instanceof Date) {
+          payload.deadline = format(payload.deadline, "yyyy-MM-dd");
+        } else if (typeof payload.deadline === "string") {
+          const parsed = parseDDMMToDate(payload.deadline);
+          payload.deadline = parsed ? format(parsed, "yyyy-MM-dd") : null;
         }
-      );
+      } else {
+        payload.deadline = null;
+      }
+
+      createTask(payload, {
+        onSuccess: () => {
+          notifySuccess("Tạo task thành công!");
+          onSuccess?.();
+          navigate("/tasks");
+        },
+        onError: (err: any) => notifyError("Tạo task thất bại! " + err.message),
+      });
     } else if (mode === "edit" && taskId) {
       setUpdating(true);
 
@@ -319,7 +342,6 @@ TaskFormProps) {
                     : null
                 }
                 onChange={(date) =>
-                  // lưu về string 'dd/MM/yyyy' trong form state để tránh timezone shift
                   field.onChange(date ? format(date, "dd/MM/yyyy") : "")
                 }
                 dateFormat="dd/MM/yyyy"
