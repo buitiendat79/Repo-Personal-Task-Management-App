@@ -173,19 +173,6 @@ TaskFormProps) {
       return;
     }
 
-    // if (mode === "create") {
-    //   createTask(
-    //     { ...data, user_id: user.id },
-    //     {
-    //       onSuccess: () => {
-    //         notifySuccess("Tạo task thành công!");
-    //         onSuccess?.();
-    //         navigate("/tasks");
-    //       },
-    //       onError: (err) => notifyError("Tạo task thất bại! " + err.message),
-    //     }
-    //   );
-    // }
     if (mode === "create") {
       const payload: any = { ...data, user_id: user.id };
 
@@ -204,7 +191,9 @@ TaskFormProps) {
         onSuccess: () => {
           notifySuccess("Tạo task thành công!");
           onSuccess?.();
-          navigate("/tasks");
+          setTimeout(() => {
+            navigate("/tasks");
+          }, 1000);
         },
         onError: (err: any) => notifyError("Tạo task thất bại! " + err.message),
       });
@@ -228,7 +217,9 @@ TaskFormProps) {
         .then(() => {
           notifySuccess("Cập nhật task thành công!");
           onSuccess?.();
-          navigate("/tasks");
+          setTimeout(() => {
+            navigate("/tasks");
+          }, 1000);
         })
         .catch((err) => {
           console.error("Lỗi khi cập nhật:", err);
@@ -248,7 +239,9 @@ TaskFormProps) {
     deleteTask(taskId, {
       onSuccess: () => {
         notifySuccess("Xoá task thành công!");
-        navigate("/tasks");
+        setTimeout(() => {
+          navigate("/tasks");
+        }, 1000);
       },
       onError: (err) => {
         notifyError("Xoá task thất bại!");
@@ -399,7 +392,7 @@ TaskFormProps) {
                           value={field.value || ""}
                           readOnly
                         />
-                        <FiCalendar className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                        <FiCalendar className="absolute right-3 top-1/2 -translate-y-1/2 text-black-900 pointer-events-none" />
                       </div>
                     }
                   />
