@@ -13,7 +13,7 @@ export const Sidebar = () => {
       path: "/tasks",
       icon: <FiCheckCircle size={18} />,
     },
-    { label: "Hồ sơ cá nhân", path: "#", icon: <FiUser size={18} /> },
+    { label: "Hồ sơ cá nhân", path: "/profile", icon: <FiUser size={18} /> },
     { label: "Đăng xuất", path: "#", icon: <FiPower size={18} /> },
   ];
 

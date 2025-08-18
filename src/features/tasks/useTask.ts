@@ -7,6 +7,7 @@ import {
   deleteTask,
   updateCompleted,
   updateTaskStatus,
+  fetchTaskStats,
 } from "../../api/taskApi";
 import { TaskInput } from "../../types/task";
 
@@ -77,7 +78,7 @@ export const useToggleTaskCompleted = () => {
       completed: boolean;
     }) => {
       await updateCompleted(taskId, completed);
-      const newStatus = completed ? "done" : "todo";
+      const newStatus = completed ? "Done" : "To Do";
       await updateTaskStatus(taskId, newStatus);
     },
     onSuccess: (_, variables) => {
@@ -98,5 +99,13 @@ export const useUpdateTaskStatus = () => {
   return useMutation({
     mutationFn: ({ taskId, status }: { taskId: string; status: string }) =>
       updateTaskStatus(taskId, status),
+  });
+};
+
+export const useTaskStats = (userId: string) => {
+  return useQuery({
+    queryKey: ["taskStats", userId],
+    queryFn: () => fetchTaskStats(userId),
+    enabled: !!userId,
   });
 };

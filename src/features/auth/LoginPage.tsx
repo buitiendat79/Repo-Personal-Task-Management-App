@@ -130,7 +130,7 @@ export default function LoginPage() {
         </div>
 
         <div className="flex items-center justify-between mb-6">
-          <label className="flex items-center">
+          <label className="flex items-center tabindex">
             <input
               type="checkbox"
               className="mr-2"

@@ -130,3 +130,32 @@ export const updateTaskStatus = async (taskId: string, status: string) => {
 
   if (error) throw error;
 };
+
+export const fetchTaskStats = async (userId: string) => {
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("*")
+    .eq("user_id", userId);
+
+  if (error) throw error;
+
+  const tasks: Task[] = data || [];
+  const today = dayjs().startOf("day");
+
+  const done = tasks.filter((t) => t.status === "Done").length;
+  const inProgress = tasks.filter((t) => t.status === "In Progress").length;
+  const toDo = tasks.filter((t) => t.status === "To Do").length;
+
+  const overdue = tasks.filter(
+    (t) =>
+      t.deadline && dayjs(t.deadline).isBefore(today) && t.status !== "Done"
+  ).length;
+
+  return {
+    total: tasks.length,
+    done,
+    inProgress,
+    toDo,
+    overdue,
+  };
+};
