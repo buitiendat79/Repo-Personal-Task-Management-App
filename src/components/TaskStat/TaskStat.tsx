@@ -11,9 +11,9 @@ export default function TaskStat({ userId }: { userId?: string }) {
   if (!data) return null;
 
   const chartData = [
-    { name: "Đã hoàn thành", value: data.done, color: "#1e201fff" },
-    { name: "Đang làm", value: data.inProgress, color: "#4b4d4fff" },
-    { name: "Trễ hạn", value: data.overdue, color: "#670909ff" },
+    { name: "Đã hoàn thành", value: data.done, color: "#61777aff" },
+    { name: "Đang làm", value: data.inProgress, color: "#698b97ff" },
+    { name: "Trễ hạn", value: data.overdue, color: "#db7e44ff" },
   ];
   const tableItems = [
     { label: "Tổng số task", value: data.total },

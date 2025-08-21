@@ -1,16 +1,17 @@
-// src/pages/ProfilePage.tsx
 import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../app/store";
 import { supabase } from "../api/supabaseClient";
 import { setUser } from "../features/auth/AuthSlice";
 import DashboardLayout from "../layout/DashboardLayout";
+import { useNavigate } from "react-router-dom";
 
 export default function ProfilePage() {
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.auth.user);
   const [totalTasks, setTotalTasks] = useState<number>(0);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -25,18 +26,12 @@ export default function ProfilePage() {
           if (userError) throw userError;
           if (!authUser) return;
 
-          const { data: profileData, error: profileError } = await supabase
-            .from("users")
-            .select("id, email, full_name, created_at")
-            .eq("id", authUser.id)
-            .single();
-
-          if (profileError) throw profileError;
-
-          currentUser = profileData;
-          dispatch(setUser(profileData));
+          // ✅ authUser đã có display_name trong user_metadata
+          dispatch(setUser(authUser));
+          currentUser = authUser;
         }
 
+        // đếm số task
         const { count, error: taskError } = await supabase
           .from("tasks")
           .select("*", { count: "exact", head: true })
@@ -71,6 +66,12 @@ export default function ProfilePage() {
     ? new Date(user.created_at).toLocaleDateString("vi-VN")
     : "Chưa có";
 
+  // ✅ lấy display_name từ authen trước, nếu không có thì fallback
+  const displayName =
+    (user.user_metadata as any)?.display_name ||
+    user.full_name ||
+    "Chưa cập nhật tên";
+
   return (
     <DashboardLayout>
       <div className="flex justify-center items-center min-h-screen bg-gray-200">
@@ -81,9 +82,7 @@ export default function ProfilePage() {
             alt="Avatar"
             className="w-36 h-36 rounded-full mx-auto mb-6 border-4 border-gray-200"
           />
-          <h2 className="text-xl font-semibold mb-2">
-            {user.full_name || "Chưa cập nhật tên"}
-          </h2>
+          <h2 className="text-xl font-semibold mb-2">{displayName}</h2>
           <p className="text-gray-600 text-lg">{user.email}</p>
           <div className="mt-6 space-y-3 text-lg">
             <p>
@@ -94,7 +93,10 @@ export default function ProfilePage() {
             </p>
           </div>
           <div className="mt-8 flex gap-4 justify-center">
-            <button className="border px-12 py-2 font-semibold rounded-md hover:bg-gray-50 text-lg">
+            <button
+              onClick={() => navigate("/editprofile")}
+              className="border px-12 py-2 font-semibold rounded-md hover:bg-gray-50 text-lg"
+            >
               Sửa thông tin
             </button>
             <button className="bg-blue-600 text-white font-semibold px-12 py-2 rounded-md hover:bg-blue-700 text-lg">

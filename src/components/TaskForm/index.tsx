@@ -60,14 +60,6 @@ TaskFormProps) {
         (value) => value?.trim() !== ""
       ),
     description: yup.string().max(500, "Mô tả không được quá dài").optional(),
-    // deadline: yup
-    //   .string()
-    //   .required("Vui lòng chọn deadline")
-    //   .test("valid-date", "Deadline không hợp lệ", (value) => {
-    //     if (!value) return false;
-    //     const date = dayjs(value, "DD/MM/YYYY");
-    //     return date.isValid() && date.isAfter(dayjs().subtract(1, "day"));
-    //   }),
 
     deadline: yup
       .string()
@@ -75,6 +67,16 @@ TaskFormProps) {
       .test("valid-date", "Deadline không hợp lệ", (value) => {
         const d = parseDDMMToDate(value);
         return !!d; // Chỉ cần parse ra được là hợp lệ
+      })
+      .test("not-in-past", "Deadline không hợp lệ", (value) => {
+        const d = parseDDMMToDate(value);
+        if (!d) return false;
+        // Nếu đang ở chế độ tạo mới thì không cho deadline < today
+        if (mode === "create") {
+          return !isBefore(startOfDay(d), startOfDay(new Date()));
+        }
+        // chế độ edit cho phép mọi ngày
+        return true;
       }),
 
     priority: yup.string().required("Vui lòng chọn mức ưu tiên"),
@@ -201,6 +203,15 @@ TaskFormProps) {
       setUpdating(true);
 
       const payload: any = { ...data };
+
+      // ---- THÊM LOGIC CHECKLIST ----
+      const allChecklistDone =
+        payload.checklist?.length > 0 &&
+        payload.checklist.every((item: any) => item.checked === true);
+
+      if (allChecklistDone) {
+        payload.status = "Done"; // Chú ý viết đúng "Done" trùng với enum/status DB
+      }
 
       if (payload.deadline) {
         if (payload.deadline instanceof Date) {
