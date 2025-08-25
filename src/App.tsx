@@ -8,6 +8,7 @@ import DashboardPage from "./pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProfilePage from "./pages/ProfilePage";
 import EditProfilePage from "./pages/EditProfilePage";
+import TaskDetailPage from "./features/tasks/TaskDetailPage";
 
 function App() {
   return (
@@ -65,6 +66,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/tasks/:taskId" element={<TaskDetailPage />} />
       </Routes>
     </Router>
   );

@@ -122,7 +122,7 @@ export default function EditProfilePage() {
         );
       }
 
-      setMsg("Cập nhật thành công!");
+      setMsg("Cập nhật thành công");
     } catch (err: any) {
       console.error(err);
       setMsg(err?.message || String(err) || "Có lỗi xảy ra. Vui lòng thử lại.");
@@ -153,7 +153,7 @@ export default function EditProfilePage() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-gray-100 flex justify-center items-start py-16 px-2">
+      <div className="min-h-screen bg-gray-200 flex justify-center items-start py-16 px-2">
         <div className="w-full max-w-xl bg-white rounded-2xl shadow p-8 h-fit">
           <h1 className="text-4xl font-bold mb-6 text-center">
             Sửa thông tin cá nhân

@@ -28,6 +28,7 @@ export interface TaskInput {
   status: Status;
   checklist?: ChecklistItem[];
   user_id: string;
+  created_at: string;
 }
 
 export interface TaskFilter {
