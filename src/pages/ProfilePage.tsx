@@ -18,20 +18,29 @@ export default function ProfilePage() {
       try {
         let currentUser = user;
 
+        // Nếu Redux chưa có user thì lấy từ Supabase Auth
         if (!currentUser) {
           const {
             data: { user: authUser },
-            error: userError,
+            error,
           } = await supabase.auth.getUser();
-          if (userError) throw userError;
+          if (error) throw error;
           if (!authUser) return;
 
-          // ✅ authUser đã có display_name trong user_metadata
-          dispatch(setUser(authUser));
-          currentUser = authUser;
+          const normalizedUser = {
+            id: authUser.id,
+            email: authUser.email ?? "",
+            display_name: (authUser.user_metadata as any)?.display_name ?? "",
+            created_at: authUser.created_at,
+          };
+
+          dispatch(setUser(normalizedUser));
+          currentUser = normalizedUser;
         }
 
-        // đếm số task
+        if (!currentUser) return;
+
+        // Đếm số task của user
         const { count, error: taskError } = await supabase
           .from("tasks")
           .select("*", { count: "exact", head: true })
@@ -66,11 +75,8 @@ export default function ProfilePage() {
     ? new Date(user.created_at).toLocaleDateString("vi-VN")
     : "Chưa có";
 
-  // ✅ lấy display_name từ authen trước, nếu không có thì fallback
-  const displayName =
-    (user.user_metadata as any)?.display_name ||
-    user.full_name ||
-    "Chưa cập nhật tên";
+  // ✅ lấy từ Redux chuẩn hóa
+  const displayName = user.display_name || "Chưa cập nhật tên";
 
   return (
     <DashboardLayout>
@@ -99,7 +105,10 @@ export default function ProfilePage() {
             >
               Sửa thông tin
             </button>
-            <button className="bg-blue-600 text-white font-semibold px-12 py-2 rounded-md hover:bg-blue-700 text-lg">
+            <button
+              onClick={() => navigate("/change_password")}
+              className="bg-blue-600 text-white font-semibold px-12 py-2 rounded-md hover:bg-blue-700 text-lg"
+            >
               Đổi mật khẩu
             </button>
           </div>

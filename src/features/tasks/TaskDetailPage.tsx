@@ -1,6 +1,6 @@
 // pages/TaskDetailPage.tsx
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, Navigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { fetchTaskById, deleteTask } from "../../api/taskApi";
 import { TaskInput } from "../../types/task";
 import { formatDate } from "../../utils/date";
@@ -50,6 +50,7 @@ export default function TaskDetailPage() {
   const [task, setTask] = useState<TaskInput | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false); // state cho modal
 
   useEffect(() => {
     if (!taskId) return;
@@ -65,21 +66,21 @@ export default function TaskDetailPage() {
 
   const handleDelete = () => {
     if (!taskId) return;
-    if (!confirm("Bạn có chắc chắn muốn xóa task này?")) return;
 
     setDeleting(true);
     deleteTask(taskId)
       .then(() => {
         notifySuccess("Xóa task thành công!");
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 1000);
+        setTimeout(() => navigate("/dashboard"), 800);
       })
       .catch((err) => {
         console.error(err);
         notifyError("Xóa task thất bại!");
       })
-      .finally(() => setDeleting(false));
+      .finally(() => {
+        setDeleting(false);
+        setShowConfirm(false); // đóng modal
+      });
   };
 
   if (loading) return <p className="text-center mt-10">Đang tải...</p>;
@@ -125,7 +126,7 @@ export default function TaskDetailPage() {
             <div className="space-y-1">
               {task.checklist?.length ? (
                 task.checklist.map((item, idx) => (
-                  <p key={idx} className="font-semibold">
+                  <p key={idx} className="font-normal">
                     {item.content}
                   </p>
                 ))
@@ -139,28 +140,56 @@ export default function TaskDetailPage() {
           <div className="flex justify-center gap-6 pt-4 border-t">
             <button
               onClick={() => navigate(`/tasks/${taskId}/edit`)}
-              className="px-8 py-2 bg-blue-600 text-white rounded-md text-hover:bg-blue-700 font-semibold"
+              className="px-6 py-2 bg-blue-600 text-white text-xl rounded-md hover:bg-blue-700 font-semibold"
             >
               Sửa
             </button>
 
             <button
-              onClick={handleDelete}
+              onClick={() => setShowConfirm(true)}
               disabled={deleting}
-              className="px-8 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 font-semibold disabled:opacity-50"
+              className="px-6 py-2 bg-red-500 text-white text-xl rounded-md hover:bg-red-600 font-semibold disabled:opacity-50"
             >
               {deleting ? "Đang xóa..." : "Xóa"}
             </button>
 
             <button
               onClick={() => navigate("/dashboard")}
-              className="px-8 py-2 border border-black text-black rounded-md hover:bg-gray-100 font-semibold"
+              className="px-6 py-2 border border-gray-300 text-black text-xl inset-shadow-md rounded-md hover:bg-gray-100 font-semibold"
             >
               Đóng
             </button>
           </div>
         </div>
       </div>
+
+      {/* Confirm Modal */}
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full">
+            <h2 className="text-lg font-semibold">
+              Bạn có chắc chắn muốn xoá task này không?
+              <br />
+              Hành động này không thể hoàn tác.
+            </h2>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="px-4 py-2 border rounded-md hover:bg-gray-100"
+              >
+                Huỷ
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 disabled:opacity-50"
+              >
+                {deleting ? "Đang xoá..." : "Xoá"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

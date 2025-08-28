@@ -9,6 +9,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import ProfilePage from "./pages/ProfilePage";
 import EditProfilePage from "./pages/EditProfilePage";
 import TaskDetailPage from "./features/tasks/TaskDetailPage";
+import ChangePW from "./pages/ChangePW";
 
 function App() {
   return (
@@ -67,6 +68,14 @@ function App() {
           }
         />
         <Route path="/tasks/:taskId" element={<TaskDetailPage />} />
+        <Route
+          path="/change_password"
+          element={
+            <ProtectedRoute>
+              <ChangePW />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </Router>
   );

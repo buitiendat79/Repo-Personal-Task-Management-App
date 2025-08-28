@@ -103,9 +103,9 @@ TaskFormProps) {
   // State xoá/cập nhật (Edit mode)
   const [isDeleting, setIsDeleting] = useState(false);
   const [updating, setUpdating] = useState(false);
-  // const [showConfirmDelete, setShowConfirmDelete] = useState(false);
-  const [showFirstConfirm, setShowFirstConfirm] = useState(false); // Bước 1
-  const [showSecondConfirm, setShowSecondConfirm] = useState(false); // Bước 2
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  // const [showFirstConfirm, setShowFirstConfirm] = useState(false); // Bước 1
+  // const [showSecondConfirm, setShowSecondConfirm] = useState(false); // Bước 2
 
   // Khởi tạo react-hook-form
   const {
@@ -204,7 +204,7 @@ TaskFormProps) {
 
       const payload: any = { ...data };
 
-      // ---- THÊM LOGIC CHECKLIST ----
+      // kiểm tra trạng thái tick của checklist
       const allChecklistDone =
         payload.checklist?.length > 0 &&
         payload.checklist.every((item: any) => item.checked === true);
@@ -260,7 +260,7 @@ TaskFormProps) {
       },
       onSettled: () => {
         setIsDeleting(false);
-        setShowSecondConfirm(false);
+        setShowConfirmDelete(false);
       },
     });
   };
@@ -354,6 +354,7 @@ TaskFormProps) {
                 wrapperClassName="w-full"
                 popperPlacement="bottom-end"
                 customInput={<CustomDateInput />}
+                minDate={new Date()}
               />
             )}
           />
@@ -589,8 +590,8 @@ TaskFormProps) {
             {/* Nút Xóa */}
             <button
               type="button"
-              onClick={() => setShowFirstConfirm(true)}
-              className="w-[140px] border border-red-500 text-red-500 px-4 py-2 rounded-md hover:bg-red-100"
+              onClick={() => setShowConfirmDelete(true)}
+              className="w-[140px] border border-red-500 text-red-500 font-semibold px-4 py-2 rounded-md hover:bg-red-100"
             >
               Xoá task
             </button>
@@ -599,45 +600,19 @@ TaskFormProps) {
             <button
               type="button"
               onClick={() => navigate("/tasks")}
-              className="w-[140px] py-2 border border-gray-400 text-gray-700 bg-white rounded-md hover:bg-gray-100 font-semibold"
+              className="w-[140px] py-2 border border-gray-400 text-gray-800 font-semibold bg-white rounded-md hover:bg-gray-100 font-semibold"
             >
               Huỷ
             </button>
           </>
         )}
       </div>
-      {showFirstConfirm && (
+      {showConfirmDelete && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm text-center">
-            <h2 className="text-lg font-semibold mb-6">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md text-center">
+            <h2 className="text-lg font-semibold">
               Bạn có chắc chắn muốn xoá task này không?
             </h2>
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                className="px-4 py-2 border rounded-md hover:bg-gray-100"
-                onClick={() => setShowFirstConfirm(false)}
-              >
-                Không
-              </button>
-              <button
-                type="button"
-                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-                onClick={() => {
-                  setShowFirstConfirm(false);
-                  setShowSecondConfirm(true);
-                }}
-              >
-                Có
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showSecondConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm text-center">
             <h2 className="text-lg font-semibold mb-6">
               Hành động này không thể hoàn tác
             </h2>
@@ -645,7 +620,7 @@ TaskFormProps) {
               <button
                 type="button"
                 className="px-4 py-2 border rounded-md hover:bg-gray-100"
-                onClick={() => setShowSecondConfirm(false)}
+                onClick={() => setShowConfirmDelete(false)}
               >
                 Huỷ
               </button>

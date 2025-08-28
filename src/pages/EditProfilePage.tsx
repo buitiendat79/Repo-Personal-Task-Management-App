@@ -9,7 +9,7 @@ import DashboardLayout from "../layout/DashboardLayout";
 type AuthUser = {
   id: string;
   email: string;
-  display_name?: string; // dùng display_name từ auth
+  display_name?: string; // từ Supabase Auth user_metadata
   created_at: string;
 };
 
@@ -24,49 +24,47 @@ export default function EditProfilePage() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string>("");
 
-  const [fullName, setFullName] = useState<string>(""); // text input cho display_name
+  const [fullName, setFullName] = useState<string>(""); // bind với display_name (có thể rỗng)
   const [email, setEmail] = useState<string>("");
   const [createdAt, setCreatedAt] = useState<string>("");
   const [avatarUrl, setAvatarUrl] = useState<string>("/user.png");
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Lấy user từ Supabase Auth (không đụng bảng users nữa)
+  // Luôn lấy user mới nhất từ Supabase Auth rồi đồng bộ Redux
   useEffect(() => {
-    const ensureUser = async () => {
+    const loadFreshAuthUser = async () => {
       try {
-        let u = storeUser;
+        const {
+          data: { user: authUser },
+          error,
+        } = await supabase.auth.getUser();
+        if (error) throw error;
 
-        if (!u) {
-          const {
-            data: { user: authUser },
-            error: authErr,
-          } = await supabase.auth.getUser();
-          if (authErr) throw authErr;
-          if (!authUser) {
-            setLoading(false);
-            return;
-          }
-
-          u = {
-            id: authUser.id,
-            email: authUser.email ?? "",
-            display_name: (authUser.user_metadata as any)?.display_name ?? "",
-            created_at: authUser.created_at,
-          };
-
-          // đồng bộ Redux
-          dispatch(setUser(u));
+        if (!authUser) {
+          setLoading(false);
+          return;
         }
 
-        setFullName(u?.display_name ?? "");
-        setEmail(u?.email ?? "");
+        const fresh: AuthUser = {
+          id: authUser.id,
+          email: authUser.email ?? "",
+          display_name: (authUser.user_metadata as any)?.display_name ?? "",
+          created_at: authUser.created_at,
+        };
+
+        // Đồng bộ Redux để mọi trang dùng chung dữ liệu mới nhất
+        dispatch(setUser(fresh));
+
+        // Bind UI
+        setFullName(fresh.display_name ?? "");
+        setEmail(fresh.email);
         setCreatedAt(
-          u?.created_at
-            ? new Date(u.created_at).toLocaleDateString("vi-VN")
+          fresh.created_at
+            ? new Date(fresh.created_at).toLocaleDateString("vi-VN")
             : ""
         );
-        setAvatarUrl("/user.png"); // avatar FE mặc định
+        setAvatarUrl("/user.png");
       } catch (e) {
         console.error(e);
         setMsg("Không tải được dữ liệu người dùng.");
@@ -75,8 +73,9 @@ export default function EditProfilePage() {
       }
     };
 
-    ensureUser();
-  }, [storeUser, dispatch]);
+    loadFreshAuthUser();
+    // Không phụ thuộc storeUser để tránh loop; luôn lấy fresh từ Auth khi vào trang
+  }, [dispatch]);
 
   const onChooseImageClick = () => fileInputRef.current?.click();
 
@@ -91,7 +90,6 @@ export default function EditProfilePage() {
       setMsg("Ảnh tối đa 3MB.");
       return;
     }
-    // chỉ preview local, không lưu DB
     setAvatarUrl(URL.createObjectURL(f));
   };
 
@@ -104,22 +102,31 @@ export default function EditProfilePage() {
     setMsg("");
 
     try {
-      const { data, error } = await supabase.auth.updateUser({
-        data: { display_name: fullName },
+      const nextName = fullName.trim();
+      // Nếu rỗng thì xóa key cho sạch (null) ; nếu có thì lưu chuỗi
+      const { error: updateErr } = await supabase.auth.updateUser({
+        data: { display_name: nextName || null },
       });
-      if (error) throw error;
+      if (updateErr) throw updateErr;
 
-      const authUser = data.user;
-      // đồng bộ lại Redux theo user trả về
-      if (authUser) {
+      // Refetch để chắc chắn Redux đồng bộ metadata mới nhất
+      const {
+        data: { user: authUser2 },
+        error: refetchErr,
+      } = await supabase.auth.getUser();
+      if (refetchErr) throw refetchErr;
+
+      if (authUser2) {
         dispatch(
           setUser({
-            id: authUser.id,
-            email: authUser.email ?? "",
-            display_name: (authUser.user_metadata as any)?.display_name ?? "",
-            created_at: authUser.created_at,
+            id: authUser2.id,
+            email: authUser2.email ?? "",
+            display_name: (authUser2.user_metadata as any)?.display_name ?? "",
+            created_at: authUser2.created_at,
           })
         );
+        // Cập nhật lại input theo dữ liệu chính thức vừa lưu
+        setFullName((authUser2.user_metadata as any)?.display_name ?? "");
       }
 
       setMsg("Cập nhật thành công");
@@ -198,7 +205,7 @@ export default function EditProfilePage() {
           </div>
 
           <form onSubmit={handleSave} className="space-y-4">
-            {/* Họ tên (thực chất là display_name) */}
+            {/* Họ tên (display_name trong Auth) */}
             <div>
               <label htmlFor="fullName" className="block mb-1 font-medium">
                 Họ tên
@@ -210,7 +217,6 @@ export default function EditProfilePage() {
                 onChange={(e) => setFullName(e.target.value)}
                 className="w-full border rounded-lg p-3 text-base"
                 placeholder="Nhập họ tên"
-                required
               />
             </div>
 
