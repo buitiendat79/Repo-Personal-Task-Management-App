@@ -1,5 +1,6 @@
+// src/pages/tasks/TasksPage.tsx
 import React, { useState, useEffect } from "react";
-import { useTasks } from "./useTask";
+import { useTasks, useUpdateTaskStatus } from "./useTask";
 import { useUser } from "@supabase/auth-helpers-react";
 import { Task } from "../../types/task";
 import dayjs from "dayjs";
@@ -8,7 +9,6 @@ import { useNavigate } from "react-router-dom";
 import "react-datepicker/dist/react-datepicker.css";
 import { FiSearch } from "react-icons/fi";
 import { Loader2 } from "lucide-react";
-import { useUpdateTaskStatus } from "./useTask";
 import DashboardLayout from "../../layout/DashboardLayout";
 
 const LIMIT = 9;
@@ -49,7 +49,6 @@ const TasksPage = () => {
 
   const handleToggleStatus = (task: Task) => {
     const newStatus = task.status === "Done" ? "To Do" : "Done";
-
     setUpdatingTaskIds((prev) => [...prev, task.id]);
 
     updateTaskStatus(
@@ -64,6 +63,7 @@ const TasksPage = () => {
       }
     );
   };
+
   useEffect(() => {
     setPage(1);
   }, [search, status, priority]);
@@ -94,19 +94,20 @@ const TasksPage = () => {
     <DashboardLayout>
       <div className="min-h-screen bg-gray-200 py-4 px-2">
         <div className="max-w-5xl mx-auto">
-          <div className="flex justify-between items-center max-w-5xl mx-auto mt-6 px-1 mb-6">
+          {/* Header */}
+          <div className="flex justify-between items-center mt-6 px-1 mb-6">
             <h1 className="text-4xl font-bold">Danh sách Task</h1>
-
             <button
               onClick={() => navigate("/createtask")}
-              className="bg-yellow-400 border-red-100 hover:bg-yellow-300 text-black font-semibold py-2 px-4 rounded-md shadow transition"
+              className="bg-yellow-400 hover:bg-yellow-300 text-black font-semibold py-2 px-4 rounded-md shadow transition"
             >
               + Tạo mới task
             </button>
           </div>
 
+          {/* Bộ lọc */}
           <div className="bg-white p-6 rounded-xl shadow-md">
-            <form className="flex flex-wrap items-end gap-4 mb-6 w-full overflow-visible">
+            <form className="flex flex-wrap items-end gap-4 mb-6 w-full">
               <div className="relative flex-1 min-w-[250px] max-w-[520px]">
                 <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
@@ -144,17 +145,18 @@ const TasksPage = () => {
                 </select>
               </div>
 
-              <div className="relative w-[200px] z-[9999] overflow-visible">
+              <div className="relative w-[200px] z-[9999]">
                 <DatePicker
                   selected={endDate}
                   onChange={handleEndDateChange}
                   placeholderText="Đến ngày"
                   dateFormat="dd/MM/yyyy"
-                  className="h-[39px] w-full border border px-3 rounded text-sm text-gray-500"
+                  className="h-[39px] w-full border px-3 rounded text-sm text-gray-500"
                 />
               </div>
             </form>
 
+            {/* Nội dung */}
             {errorMessage ? (
               <div className="text-center text-red-600 font-medium py-10">
                 {errorMessage}
@@ -168,90 +170,152 @@ const TasksPage = () => {
                 />
               </div>
             ) : (
-              <div className="border rounded overflow-hidden bg-white min-h-[600px] flex flex-col justify-between">
-                <table className="w-full table-fixed text-sm">
-                  <thead className="bg-white text-left border-b">
-                    <tr className="text-sm text-gray-800">
-                      <th className="w-[40px] px-3"></th>
-                      <th className="px-4 py-3 font-medium text-lg w-[50%]">
-                        Tên task
-                      </th>
-                      <th className="px-4 py-3 font-medium text-lg w-[20%]">
-                        Ưu tiên
-                      </th>
-                      <th className="px-4 py-3 font-medium text-lg w-[20%]">
-                        Đến ngày
-                      </th>
-                      <th className="px-4 py-3 text-center w-[10%]"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div className="border rounded bg-white min-h-[600px] flex flex-col justify-between">
+                {/* Desktop table */}
+                <div className="hidden md:block">
+                  <table className="w-full table-fixed text-sm">
+                    <thead className="bg-white text-left border-b">
+                      <tr className="text-sm text-gray-800">
+                        <th className="w-[40px] px-3"></th>
+                        <th className="px-4 py-3 font-medium text-lg w-[50%]">
+                          Tên task
+                        </th>
+                        <th className="px-4 py-3 font-medium text-lg w-[20%]">
+                          Ưu tiên
+                        </th>
+                        <th className="px-4 py-3 font-medium text-lg w-[20%]">
+                          Đến ngày
+                        </th>
+                        <th className="px-4 py-3 text-center w-[10%]"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tasksResponse?.data.map((task: Task) => {
+                        const isUpdating = updatingTaskIds.includes(task.id);
+                        const isCompleted = task.status === "Done";
+
+                        return (
+                          <tr key={task.id} className="border-t">
+                            <td className="p-3">
+                              <input
+                                type="checkbox"
+                                checked={isCompleted}
+                                disabled={isUpdating}
+                                onChange={() => handleToggleStatus(task)}
+                              />
+                            </td>
+                            <td
+                              className={`p-3 font-bold ${
+                                isCompleted ? "line-through text-gray-600" : ""
+                              }`}
+                            >
+                              {task.title}
+                            </td>
+                            <td className="p-3">
+                              <span
+                                className={`px-2 py-1 text-sm font-semibold rounded ${getPriorityClass(
+                                  task.priority
+                                )}`}
+                              >
+                                {task.priority}
+                              </span>
+                            </td>
+                            <td className="p-3 text-sm">
+                              {task.deadline
+                                ? dayjs(task.deadline).format("DD/MM/YYYY")
+                                : "--"}
+                            </td>
+                            <td className="p-3 text-center">
+                              <button
+                                className="px-3 py-1 border border-blue-600 text-blue-600 rounded-md text-sm font-medium transition-all duration-150 hover:bg-blue-50 active:scale-95"
+                                onClick={() =>
+                                  navigate(`/tasks/${task.id}/edit`)
+                                }
+                              >
+                                Sửa
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+
+                      {/* Placeholder rows để fill đủ 9 slot */}
+                      {Array.from({
+                        length: Math.max(
+                          0,
+                          LIMIT - (tasksResponse?.data.length || 0)
+                        ),
+                      }).map((_, idx) => (
+                        <tr key={`placeholder-${idx}`} className="border-t">
+                          <td className="p-3">&nbsp;</td>
+                          <td className="p-3">&nbsp;</td>
+                          <td className="p-3">&nbsp;</td>
+                          <td className="p-3">&nbsp;</td>
+                          <td className="p-3">&nbsp;</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile cards */}
+                <div className="block md:hidden">
+                  <div className="grid gap-4 p-4">
                     {tasksResponse?.data.map((task: Task) => {
                       const isUpdating = updatingTaskIds.includes(task.id);
-                      // const isCompleted = isUpdating
-                      //   ? task.status !== "Done"
-                      //   : task.status === "Done";
                       const isCompleted = task.status === "Done";
 
                       return (
-                        <tr key={task.id} className="border-t">
-                          <td className="p-3">
-                            <input
-                              type="checkbox"
-                              checked={isCompleted}
-                              disabled={isUpdating}
-                              onChange={() => handleToggleStatus(task)}
-                            />
-                          </td>
-                          <td
-                            className={`p-3 font-bold ${
-                              isCompleted ? "line-through text-gray-600" : ""
-                            }`}
-                          >
-                            {task.title}
-                          </td>
-                          <td className="p-3">
+                        <div
+                          key={task.id}
+                          className="border rounded-lg p-4 shadow-sm bg-white flex flex-col gap-2"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={isCompleted}
+                                disabled={isUpdating}
+                                onChange={() => handleToggleStatus(task)}
+                              />
+                              <h2
+                                className={`font-bold text-base ${
+                                  isCompleted
+                                    ? "line-through text-gray-600"
+                                    : ""
+                                }`}
+                              >
+                                {task.title}
+                              </h2>
+                            </div>
+                            <button
+                              className="px-3 py-1 border border-blue-600 text-blue-600 rounded-md text-xs font-medium transition hover:bg-blue-50"
+                              onClick={() => navigate(`/tasks/${task.id}/edit`)}
+                            >
+                              Sửa
+                            </button>
+                          </div>
+                          <div className="flex justify-between items-center text-sm text-gray-600">
                             <span
-                              className={`px-2 py-1 text-sm font-semibold rounded ${getPriorityClass(
+                              className={`px-2 py-1 text-xs font-semibold rounded ${getPriorityClass(
                                 task.priority
                               )}`}
                             >
                               {task.priority}
                             </span>
-                          </td>
-                          <td className="p-3 text-sm">
-                            {task.deadline
-                              ? dayjs(task.deadline).format("DD/MM/YYYY")
-                              : "--"}
-                          </td>
-                          <td className="p-3 text-center">
-                            <button
-                              className="px-3 py-1 border border-blue-600 text-blue-600 rounded-md text-sm font-medium transition-all duration-150 hover:bg-blue-50 active:scale-95"
-                              onClick={() => navigate(`/tasks/${task.id}/edit`)}
-                            >
-                              Sửa
-                            </button>
-                          </td>
-                        </tr>
+                            <span>
+                              {task.deadline
+                                ? dayjs(task.deadline).format("DD/MM/YYYY")
+                                : "--"}
+                            </span>
+                          </div>
+                        </div>
                       );
                     })}
+                  </div>
+                </div>
 
-                    {tasksResponse &&
-                      tasksResponse.data.length < LIMIT &&
-                      Array.from({
-                        length: LIMIT - tasksResponse.data.length,
-                      }).map((_, idx) => (
-                        <tr key={`empty-${idx}`} className="border-t h-[52px]">
-                          <td className="p-3">&nbsp;</td>
-                          <td className="p-3">&nbsp;</td>
-                          <td className="p-3">&nbsp;</td>
-                          <td className="p-3">&nbsp;</td>
-                          <td className="p-3 text-center">&nbsp;</td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-
+                {/* Pagination */}
                 <div className="flex justify-center items-center gap-2 py-4 border-t bg-white">
                   <button
                     disabled={page === 1}
@@ -265,8 +329,10 @@ const TasksPage = () => {
                     <button
                       key={idx}
                       onClick={() => setPage(idx + 1)}
-                      className={`px-3 py-1 text-base font-medium text-gray-800 rounded ${
-                        page === idx + 1 ? "text-lg font-bold" : "text-gray-400"
+                      className={`px-3 py-1 text-base font-medium rounded ${
+                        page === idx + 1
+                          ? "text-lg font-bold text-gray-800"
+                          : "text-gray-400"
                       }`}
                     >
                       {idx + 1}

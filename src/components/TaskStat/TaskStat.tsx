@@ -50,7 +50,7 @@ export default function TaskStat({ userId }: { userId?: string }) {
             </tbody>
           </table>
         </div>
-        <div className="flex-[3] h-[200px]">
+        <div className="w-full h-64 md:flex-[3] md:h-[220px]">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie

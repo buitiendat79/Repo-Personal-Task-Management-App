@@ -115,6 +115,7 @@ TaskFormProps) {
     control,
     trigger,
     reset,
+    watch,
   } = useForm<TaskInput>({
     defaultValues: {
       title: "",
@@ -168,6 +169,8 @@ TaskFormProps) {
     append,
     remove,
   } = useFieldArray({ control, name: "checklist" });
+
+  const isTaskDone = mode === "edit" && watch("status") === "Done";
 
   const onSubmit = (data: TaskInput) => {
     if (!user?.id) {
@@ -492,6 +495,7 @@ TaskFormProps) {
                     type="checkbox"
                     className="w-4 h-4 text-blue-600 border-gray-300 rounded shrink-0"
                     {...register(`checklist.${index}.checked`)} //  Placeholder luu state checkbox
+                    disabled={isTaskDone}
                   />
                   <textarea
                     {...register(`checklist.${index}.content`)}
@@ -537,13 +541,22 @@ TaskFormProps) {
           ))}
         </div>
 
-        <button
+        {/* <button
           type="button"
           onClick={() => append({ content: "" })}
           className="text-blue-600 text-sm mt-3 hover:underline"
         >
           + Thêm checklist
-        </button>
+        </button> */}
+        {!isTaskDone && (
+          <button
+            type="button"
+            onClick={() => append({ content: "" })}
+            className="text-blue-600 text-sm mt-3 hover:underline"
+          >
+            + Thêm checklist
+          </button>
+        )}
       </div>
 
       {/* Create mode */}

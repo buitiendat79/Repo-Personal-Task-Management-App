@@ -1,4 +1,5 @@
-import { useState, FormEvent, ChangeEvent } from "react";
+// src/features/auth/LoginPage.tsx
+import { useState, FormEvent, ChangeEvent, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { supabase } from "../../api/supabaseClient";
@@ -22,6 +23,44 @@ export default function LoginPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
 
+  // Khi vào login page: nếu có saved session trong storage tương ứng -> restore vào supabase và redirect
+  useEffect(() => {
+    const restoreFromStorage = async () => {
+      try {
+        const hasRemember =
+          localStorage.getItem("sb-session-remember") === "true";
+        const storage = hasRemember ? localStorage : sessionStorage;
+        const saved = storage.getItem("sb-session");
+        console.debug(
+          "LoginPage: restore check -> hasRemember:",
+          hasRemember,
+          "saved exists:",
+          !!saved
+        );
+
+        if (saved) {
+          const session = JSON.parse(saved);
+          // restore into supabase client (in-memory)
+          const { error: setErr } = await supabase.auth.setSession(session);
+          if (setErr) {
+            console.warn("LoginPage: supabase.auth.setSession error", setErr);
+          } else {
+            // dispatch user from saved session if available
+            const user = (session as any).user ?? (session as any).user;
+            if (user) {
+              dispatch(setUser(user));
+              navigate("/dashboard", { replace: true });
+            }
+          }
+        }
+      } catch (err) {
+        console.error("LoginPage restoreFromStorage error", err);
+      }
+    };
+
+    restoreFromStorage();
+  }, [dispatch, navigate]);
+
   const validate = (): boolean => {
     const newErrors: Errors = {};
     if (!email) newErrors.email = "Vui lòng nhập email";
@@ -39,41 +78,69 @@ export default function LoginPage() {
     if (!validate()) return;
 
     setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
 
-    if (error) {
-      setErrors({
-        general: error.message.includes("Invalid login credentials")
-          ? "Email hoặc mật khẩu không đúng"
-          : error.message,
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
+
+      if (error) {
+        setErrors({
+          general: error.message.includes("Invalid login credentials")
+            ? "Email hoặc mật khẩu không đúng"
+            : error.message,
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (!data?.session) {
+        setErrors({ general: "Không lấy được session từ Supabase" });
+        setLoading(false);
+        return;
+      }
+
+      // Chọn storage: localStorage nếu tick remember, ngược lại sessionStorage
+      const storage = remember ? localStorage : sessionStorage;
+      storage.setItem("sb-session", JSON.stringify(data.session));
+
+      // lưu flag chỉ khi remember = true
+      if (remember) {
+        localStorage.setItem("sb-session-remember", "true");
+      } else {
+        localStorage.removeItem("sb-session-remember");
+      }
+
+      // ensure supabase client in this tab has the session
+      const { error: setErr } = await supabase.auth.setSession(data.session);
+      if (setErr) {
+        console.warn("LoginPage: setSession error", setErr);
+      }
+
+      // update redux user
+      const user = data.user ?? data.session.user;
+      dispatch(setUser(user));
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      console.error("LoginPage handleSubmit error", err);
+      setErrors({ general: "Đã có lỗi xảy ra" });
+    } finally {
       setLoading(false);
-      return;
     }
-
-    if (remember) {
-      localStorage.setItem("rememberedUser", email);
-    } else {
-      localStorage.removeItem("rememberedUser");
-    }
-
-    dispatch(setUser(data.user));
-    navigate("/dashboard");
-    setLoading(false);
   };
 
+  // ... UI rest unchanged (same as what ông có)
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <form
         onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-xl shadow-md w-full max-w-md"
+        className="bg-white p-6 sm:p-8 rounded-xl shadow-md w-full max-w-md mx-4"
         data-testid="form-login"
       >
         <h2 className="text-2xl font-bold mb-6 text-center">Đăng nhập</h2>
 
+        {/* Email */}
         <div className="mb-4">
           <label htmlFor="email" className="block mb-1">
             Email
@@ -81,7 +148,7 @@ export default function LoginPage() {
           <input
             id="email"
             type="email"
-            className="w-full border px-3 py-2 rounded"
+            className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={email}
             onChange={(e: ChangeEvent<HTMLInputElement>) =>
               setEmail(e.target.value)
@@ -95,6 +162,7 @@ export default function LoginPage() {
           )}
         </div>
 
+        {/* Password */}
         <div className="mb-4">
           <label htmlFor="password" className="block mb-1">
             Mật khẩu
@@ -129,8 +197,9 @@ export default function LoginPage() {
           )}
         </div>
 
-        <div className="flex items-center justify-between mb-6">
-          <label className="flex items-center tabindex">
+        {/* Remember me + Forgot password */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-2 sm:gap-0">
+          <label className="flex items-center">
             <input
               type="checkbox"
               className="mr-2"
@@ -147,16 +216,18 @@ export default function LoginPage() {
           </Link>
         </div>
 
+        {/* Error */}
         {errors.general && (
           <p className="text-red-500 mb-4 text-sm text-center">
             {errors.general}
           </p>
         )}
 
+        {/* Submit button */}
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+          className="w-full bg-blue-600 text-white py-2 rounded font-semibold hover:bg-blue-700 disabled:opacity-50"
         >
           {loading ? "Đang đăng nhập..." : "Đăng nhập"}
         </button>

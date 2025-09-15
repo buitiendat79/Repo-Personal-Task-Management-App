@@ -37,11 +37,11 @@ const TaskList = () => {
     refetch,
   } = useTasks(
     user?.id || "",
-    undefined, // status filter
-    undefined, // priority filter
-    undefined, // deadline filter
-    undefined, // search
-    1, // page
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    1,
     LIMIT
   );
 
@@ -81,6 +81,7 @@ const TaskList = () => {
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-md">
+      {/* Header */}
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-semibold mb-6">Danh sách Task</h1>
         <button
@@ -91,56 +92,103 @@ const TaskList = () => {
         </button>
       </div>
 
-      <table className="w-full text-left">
-        <thead>
-          <tr className="bg-white border-b">
-            <th className="py-3 px-4 text-gray-600">Tên</th>
-            <th className="py-3 px-4 text-gray-600">Ưu tiên</th>
-            <th className="py-3 px-4 text-gray-600">Deadline</th>
-            <th className="py-3 px-4"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {tasks.map((task) => {
-            const completed = task.status === "Done";
-            const isUpdating = updatingTaskIds.includes(task.id);
+      {/* Desktop: bảng */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="min-w-max w-full text-left">
+          <thead>
+            <tr className="bg-white border-b">
+              <th className="py-3 px-4 text-gray-600">Tên</th>
+              <th className="py-3 px-4 text-gray-600">Ưu tiên</th>
+              <th className="py-3 px-4 text-gray-600">Deadline</th>
+              <th className="py-3 px-4"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {tasks.map((task) => {
+              const completed = task.status === "Done";
+              const isUpdating = updatingTaskIds.includes(task.id);
 
-            return (
-              <tr key={task.id} className="border-b hover:bg-gray-50">
-                <td className="py-3 px-4 font-semibold text-gray-800">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={completed}
-                      disabled={isUpdating}
-                      onChange={() => handleToggleStatus(task)}
-                      className="w-4 h-4 rounded"
-                    />
-                    <span className={completed ? "line-through" : ""}>
-                      {task.title}
-                    </span>
-                  </div>
-                </td>
-                <td className="py-3 px-4">
-                  <PriorityBadge priority={task.priority} />
-                </td>
-                <td className="py-3 px-4 text-gray-800 font-medium">
-                  {formatDate(task.deadline)}
-                </td>
-                <td className="py-3 px-4">
-                  <button
-                    type="button"
-                    className="flex items-center gap-1 text-gray-600 font-semibold hover:underline"
-                    onClick={() => navigate(`/tasks/${task.id}`)}
-                  >
-                    <span>Xem</span>
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+              return (
+                <tr key={task.id} className="border-b hover:bg-gray-50">
+                  <td className="py-3 px-4 font-semibold text-gray-800">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={completed}
+                        disabled={isUpdating}
+                        onChange={() => handleToggleStatus(task)}
+                        className="w-4 h-4 rounded"
+                      />
+                      <span className={completed ? "line-through" : ""}>
+                        {task.title}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <PriorityBadge priority={task.priority} />
+                  </td>
+                  <td className="py-3 px-4 text-gray-800 font-medium">
+                    {formatDate(task.deadline)}
+                  </td>
+                  <td className="py-3 px-4">
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 text-gray-600 font-semibold hover:underline"
+                      onClick={() => navigate(`/tasks/${task.id}`)}
+                    >
+                      <span>Xem</span>
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile: card view */}
+      <div className="space-y-3 md:hidden">
+        {tasks.map((task) => {
+          const completed = task.status === "Done";
+          const isUpdating = updatingTaskIds.includes(task.id);
+
+          return (
+            <div
+              key={task.id}
+              className="p-4 border rounded-lg shadow-sm bg-gray-50"
+            >
+              <div className="flex items-center justify-between">
+                <span
+                  className={`font-semibold ${
+                    completed ? "line-through text-gray-500" : "text-gray-800"
+                  }`}
+                >
+                  {task.title}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={completed}
+                  disabled={isUpdating}
+                  onChange={() => handleToggleStatus(task)}
+                  className="w-4 h-4"
+                />
+              </div>
+              <div className="text-sm text-gray-600 mt-2">
+                Ưu tiên: <PriorityBadge priority={task.priority} />
+              </div>
+              <div className="text-sm text-gray-600">
+                Deadline: {formatDate(task.deadline)}
+              </div>
+              <button
+                onClick={() => navigate(`/tasks/${task.id}`)}
+                className="mt-2 text-blue-600 font-semibold hover:underline"
+              >
+                Xem
+              </button>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };

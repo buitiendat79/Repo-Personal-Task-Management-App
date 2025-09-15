@@ -1,98 +1,146 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
-import TaskForm from ".";
-import { TestProviders } from "../../test/TestProviders";
-import { Priority } from "../../types/task";
+import TaskForm from "../TaskForm";
+import { vi } from "vitest";
 
-describe("TaskForm - Unit Test", () => {
-  it("should render all fields", () => {
-    render(
-      <TestProviders>
-        <TaskForm />
-      </TestProviders>
-    );
+// Mock hooks & utils
+const createMutate = vi.fn();
+const updateMutate = vi.fn();
+const deleteMutate = vi.fn();
 
-    expect(screen.getByLabelText(/Tên task/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Deadline/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Ưu tiên/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Checklist/i).length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: /Tạo mới/i })).toBeDisabled();
+vi.mock("../../features/tasks/useTask", () => ({
+  useCreateTask: () => ({
+    mutate: createMutate,
+    isPending: false,
+  }),
+  useDeleteTask: () => ({
+    mutate: deleteMutate,
+    isPending: false,
+  }),
+  useUpdateTask: () => ({
+    mutate: updateMutate,
+    isPending: false,
+  }),
+}));
+
+vi.mock("@supabase/auth-helpers-react", () => ({
+  useUser: () => ({ id: "user-123" }),
+}));
+
+const navigateMock = vi.fn();
+vi.mock("react-router-dom", async (importOriginal) => {
+  const actual: any = await importOriginal();
+  return {
+    ...actual,
+    useNavigate: () => navigateMock,
+    useParams: () => ({ taskId: "1" }),
+  };
+});
+
+const notifySuccess = vi.fn();
+const notifyError = vi.fn();
+vi.mock("../../utils/notify", () => ({
+  notifySuccess: (msg: string) => notifySuccess(msg),
+  notifyError: (msg: string) => notifyError(msg),
+}));
+
+// Fake DatePicker
+vi.mock("react-datepicker", () => ({
+  __esModule: true,
+  default: ({ onChange, selected }: any) => (
+    <input
+      data-testid="datepicker"
+      value={selected ? "2025-09-20" : ""}
+      onChange={(e) => onChange(new Date(e.target.value))}
+    />
+  ),
+}));
+
+describe("TaskForm (create mode)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it("should show errors when submitting empty form", async () => {
-    render(
-      <TestProviders>
-        <TaskForm />
-      </TestProviders>
-    );
-
-    fireEvent.input(screen.getByLabelText(/Tên task/i), {
-      target: { value: " " },
-    });
-    fireEvent.blur(screen.getByLabelText(/Tên task/i));
-
-    fireEvent.change(screen.getByLabelText(/Deadline/i), {
-      target: { value: "" },
-    });
-    fireEvent.blur(screen.getByLabelText(/Deadline/i));
-
-    fireEvent.change(screen.getByLabelText(/Ưu tiên/i), {
-      target: { value: "" },
-    });
-    fireEvent.blur(screen.getByLabelText(/Ưu tiên/i));
-
-    fireEvent.click(screen.getByRole("button", { name: /Tạo mới/i }));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("error-title")).toBeInTheDocument();
-      expect(screen.getByTestId("error-deadline")).toBeInTheDocument();
-      expect(screen.getByTestId("priority-select")).toBeInTheDocument();
-    });
+  it("render form tạo task", () => {
+    render(<TaskForm mode="create" />);
+    expect(screen.getByText("Tạo mới Task")).toBeInTheDocument();
   });
 
-  it("should enable submit when valid data is entered", async () => {
-    render(
-      <TestProviders>
-        <TaskForm />
-      </TestProviders>
-    );
-
-    fireEvent.input(screen.getByLabelText(/Tên task/i), {
-      target: { value: "Task 1" },
+  it("submit hợp lệ → gọi create", async () => {
+    createMutate.mockImplementation((_data, opts) => {
+      opts?.onSuccess?.();
     });
 
-    const today = new Date().toISOString().split("T")[0];
-    fireEvent.change(screen.getByLabelText(/Deadline/i), {
-      target: { value: today },
+    render(<TaskForm mode="create" />);
+    fireEvent.change(screen.getByLabelText("Tên task"), {
+      target: { value: "Task A" },
     });
-
-    fireEvent.change(screen.getByLabelText(/Ưu tiên/i), {
+    fireEvent.change(screen.getByTestId("datepicker"), {
+      target: { value: "2025-09-20" },
+    });
+    fireEvent.change(screen.getByLabelText("Ưu tiên"), {
       target: { value: "High" },
     });
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Tạo mới/i })).toBeEnabled();
-    });
-  });
-
-  it("should display checklist validation", async () => {
-    render(
-      <TestProviders>
-        <TaskForm />
-      </TestProviders>
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: /Thêm/i }));
-
-    const checklistInput = screen.getByPlaceholderText(/Item 1/i);
-    fireEvent.blur(checklistInput); // Trigger validation
-
     fireEvent.click(screen.getByRole("button", { name: /Tạo mới/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId("error-checklist-0")).toHaveTextContent(
-        /Checklist 1: Checklist không được để trống/i
-      );
+      expect(notifySuccess).toHaveBeenCalledWith("Tạo task thành công!");
+      expect(navigateMock).toHaveBeenCalledWith("/tasks");
+    });
+  });
+});
+
+describe("TaskForm (edit mode)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const defaultValues = {
+    id: "task-1",
+    title: "Old title",
+    description: "Old desc",
+    deadline: new Date("2025-09-20"),
+    priority: "Medium",
+    checklist: [{ content: "Item 1" }],
+  };
+
+  it("render form với dữ liệu mặc định", () => {
+    render(<TaskForm mode="edit" defaultValues={defaultValues} />);
+    expect(screen.getByLabelText("Tên task")).toHaveValue("Old title");
+    expect(screen.getByLabelText("Mô tả")).toHaveValue("Old desc");
+    expect(screen.getByPlaceholderText("Item 1")).toHaveValue("Item 1");
+  });
+
+  it("cập nhật task thành công", async () => {
+    updateMutate.mockImplementation((_data, opts) => {
+      opts?.onSuccess?.();
+    });
+
+    render(<TaskForm mode="edit" defaultValues={defaultValues} />);
+    fireEvent.change(screen.getByLabelText("Tên task"), {
+      target: { value: "Updated title" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Cập nhật/i }));
+
+    await waitFor(() => {
+      expect(updateMutate).toHaveBeenCalled();
+      expect(notifySuccess).toHaveBeenCalledWith("Cập nhật task thành công!");
+      expect(navigateMock).toHaveBeenCalledWith("/tasks");
+    });
+  });
+
+  it("xóa task thành công sau khi confirm", async () => {
+    deleteMutate.mockImplementation((_id, opts) => {
+      opts?.onSuccess?.();
+    });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    render(<TaskForm mode="edit" defaultValues={defaultValues} />);
+    fireEvent.click(screen.getByRole("button", { name: /xóa/i }));
+
+    await waitFor(() => {
+      expect(deleteMutate).toHaveBeenCalledWith("task-1", expect.anything());
+      expect(notifySuccess).toHaveBeenCalledWith("Xóa task thành công!");
+      expect(navigateMock).toHaveBeenCalledWith("/tasks");
     });
   });
 });

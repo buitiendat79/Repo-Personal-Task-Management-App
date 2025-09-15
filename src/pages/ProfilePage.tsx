@@ -6,9 +6,18 @@ import { setUser } from "../features/auth/AuthSlice";
 import DashboardLayout from "../layout/DashboardLayout";
 import { useNavigate } from "react-router-dom";
 
+type AuthUser = {
+  id: string;
+  email: string;
+  display_name?: string;
+  created_at: string;
+};
+
 export default function ProfilePage() {
   const dispatch = useDispatch();
-  const user = useSelector((state: RootState) => state.auth.user);
+  const user = useSelector(
+    (state: RootState) => state.auth.user
+  ) as AuthUser | null;
   const [totalTasks, setTotalTasks] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -18,8 +27,8 @@ export default function ProfilePage() {
       try {
         let currentUser = user;
 
-        // Nếu Redux chưa có user thì lấy từ Supabase Auth
-        if (!currentUser) {
+        // Nếu Redux chưa có user HOẶC thiếu display_name thì fetch lại
+        if (!currentUser || !currentUser.display_name) {
           const {
             data: { user: authUser },
             error,
@@ -27,7 +36,7 @@ export default function ProfilePage() {
           if (error) throw error;
           if (!authUser) return;
 
-          const normalizedUser = {
+          const normalizedUser: AuthUser = {
             id: authUser.id,
             email: authUser.email ?? "",
             display_name: (authUser.user_metadata as any)?.display_name ?? "",
@@ -47,7 +56,6 @@ export default function ProfilePage() {
           .eq("user_id", currentUser.id);
 
         if (taskError) throw taskError;
-
         setTotalTasks(count ?? 0);
       } catch (err) {
         console.error(err);
@@ -75,8 +83,10 @@ export default function ProfilePage() {
     ? new Date(user.created_at).toLocaleDateString("vi-VN")
     : "Chưa có";
 
-  // ✅ lấy từ Redux chuẩn hóa
-  const displayName = user.display_name || "Chưa cập nhật tên";
+  const displayName =
+    user.display_name && user.display_name.trim() !== ""
+      ? user.display_name
+      : "Chưa cập nhật tên";
 
   return (
     <DashboardLayout>
