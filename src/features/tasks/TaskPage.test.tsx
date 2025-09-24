@@ -104,7 +104,7 @@ describe("TaskPage Unit Tests", () => {
           {
             id: "1",
             title: "Task A",
-            priority: "HIGH",
+            priority: "High",
             deadline: "2025-09-10",
             status: "To Do",
           },
@@ -122,9 +122,27 @@ describe("TaskPage Unit Tests", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText("Task A")).toBeInTheDocument();
-    expect(screen.getByText("HIGH")).toBeInTheDocument();
-    expect(screen.getByText("10/09/2025")).toBeInTheDocument();
+    // ✅ Desktop: bảng hiển thị task
+    expect(screen.getByRole("cell", { name: "Task A" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "High" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("cell", { name: "10/09/2025" })
+    ).toBeInTheDocument();
+
+    // ✅ Mobile: card hiển thị task
+    expect(screen.getByRole("heading", { name: "Task A" })).toBeInTheDocument();
+
+    // lọc riêng badge priority cho mobile
+    const priorityBadges = screen
+      .getAllByText("High")
+      .filter((el) => el.tagName === "SPAN");
+    expect(priorityBadges).toHaveLength(2); // desktop + mobile badge
+
+    // lọc riêng deadline text trong table/card
+    const deadlines = screen
+      .getAllByText("10/09/2025")
+      .filter((el) => el.tagName !== "OPTION");
+    expect(deadlines).toHaveLength(2); // desktop + mobile
   });
 
   it("click checkbox gọi updateTaskStatus.mutate", () => {
@@ -155,8 +173,9 @@ describe("TaskPage Unit Tests", () => {
       </MemoryRouter>
     );
 
-    const checkbox = screen.getByRole("checkbox");
-    fireEvent.click(checkbox);
+    // Có 2 checkbox (desktop + mobile), chọn desktop
+    const checkboxes = screen.getAllByRole("checkbox");
+    fireEvent.click(checkboxes[0]);
 
     expect(mutateMock).toHaveBeenCalledWith(
       { taskId: "1", status: "Done" },

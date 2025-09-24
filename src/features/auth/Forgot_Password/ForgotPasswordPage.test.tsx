@@ -73,7 +73,12 @@ describe("ForgotPasswordPage", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /Gửi/i }));
 
-    expect(resetPasswordForEmailMock).toHaveBeenCalledWith("test@example.com");
+    expect(resetPasswordForEmailMock).toHaveBeenCalledWith(
+      "test@example.com",
+      expect.objectContaining({
+        redirectTo: "http://localhost:5173/reset-password",
+      })
+    );
 
     expect(await screen.findByTestId("success-modal")).toBeInTheDocument();
   });

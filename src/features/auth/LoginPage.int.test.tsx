@@ -10,6 +10,7 @@ vi.mock("./../../api/supabaseClient", () => ({
   supabase: {
     auth: {
       signInWithPassword: vi.fn(),
+      setSession: vi.fn().mockResolvedValue({ error: null }),
     },
   },
 }));
@@ -81,7 +82,13 @@ describe("LoginPage Integration Test", () => {
 
   test("submits login form successfully", async () => {
     supabase.auth.signInWithPassword.mockResolvedValueOnce({
-      data: { user: { id: "123", email: "test@example.com" } },
+      data: {
+        user: { id: "123", email: "test@example.com" },
+        session: {
+          user: { id: "123", email: "test@example.com" },
+          access_token: "fake",
+        },
+      },
       error: null,
     });
 
@@ -90,11 +97,13 @@ describe("LoginPage Integration Test", () => {
     await userEvent.type(screen.getByLabelText(/email/i), "test@example.com");
     await userEvent.type(screen.getByLabelText(/mật khẩu/i), "password123");
 
-    userEvent.click(screen.getByRole("button", { name: /đăng nhập/i }));
+    await userEvent.click(screen.getByRole("button", { name: /đăng nhập/i }));
 
     await waitFor(() => {
       expect(mockedDispatch).toHaveBeenCalled();
-      expect(mockedNavigate).toHaveBeenCalledWith("/dashboard");
+      expect(mockedNavigate).toHaveBeenCalledWith("/dashboard", {
+        replace: true,
+      });
     });
   });
 
