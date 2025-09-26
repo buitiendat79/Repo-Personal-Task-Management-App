@@ -74,39 +74,31 @@ describe("TaskForm (create mode)", () => {
   });
 
   it("submit hợp lệ → gọi create", async () => {
-    // debug log để nhìn console khi chạy test nếu cần
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
     createMutate.mockImplementation((data, opts) => {
-      // helpful log to debug payload if still failing
       console.log("DEBUG createMutate payload:", data);
-      opts?.onSuccess?.();
+      return Promise.resolve().then(() => {
+        opts?.onSuccess?.();
+      });
     });
 
     render(<TaskForm mode="create" />);
 
-    // LẤY ELEMENTS
     const titleInput = screen.getByLabelText(/tên task/i);
     const descInput = screen.getByLabelText(/mô tả/i);
     const dateInput = screen.getByTestId("datepicker");
     const prioritySelect = screen.getByLabelText(/ưu tiên/i);
     const submitBtn = screen.getByRole("button", { name: /tạo mới/i });
 
-    // TYPING (userEvent cho chính xác hơn)
     await userEvent.type(titleInput, "Task A");
     await userEvent.type(descInput, "Some description");
-
-    // set date (type to input[type=date] -> format YYYY-MM-DD)
     await userEvent.clear(dateInput);
     await userEvent.type(dateInput, "2025-09-20");
-
-    // select option
     await userEvent.selectOptions(prioritySelect, "High");
 
-    // click submit
     await userEvent.click(submitBtn);
 
-    // chờ và assert
     await waitFor(() => {
       expect(createMutate).toHaveBeenCalledTimes(1);
       expect(notifySuccess).toHaveBeenCalledWith("Tạo task thành công!");
