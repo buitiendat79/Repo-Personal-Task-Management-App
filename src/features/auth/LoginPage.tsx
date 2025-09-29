@@ -234,7 +234,7 @@ export default function LoginPage() {
 
         <p className="text-center text-sm mt-4">
           Chưa có tài khoản?{" "}
-          <Link to="/register" className="text-blue-600 underline">
+          <Link to="/register" className="text-red-600 underline">
             Đăng ký
           </Link>
         </p>
