@@ -81,7 +81,6 @@ const TaskList = () => {
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-md">
-      {/* Header */}
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-semibold mb-6">Danh sách Task</h1>
         <button
@@ -92,7 +91,6 @@ const TaskList = () => {
         </button>
       </div>
 
-      {/* Desktop: bảng */}
       <div className="hidden md:block overflow-x-auto">
         <table className="min-w-max w-full text-left">
           <thead>
@@ -146,7 +144,6 @@ const TaskList = () => {
         </table>
       </div>
 
-      {/* Mobile: card view */}
       <div className="space-y-3 md:hidden">
         {tasks.map((task) => {
           const completed = task.status === "Done";

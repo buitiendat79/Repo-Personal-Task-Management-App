@@ -11,6 +11,8 @@ export function useAuth() {
       setUser(data.session?.user || null);
     };
 
+    fetchSession();
+
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setUser(session?.user || null);

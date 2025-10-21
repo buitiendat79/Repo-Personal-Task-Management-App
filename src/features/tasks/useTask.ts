@@ -11,14 +11,14 @@ import {
 } from "../../api/taskApi";
 import { TaskInput } from "../../types/task";
 
-// Hook tạo task mới
+// Create
 export const useCreateTask = () => {
   return useMutation({
     mutationFn: (task: TaskInput) => createTask(task),
   });
 };
 
-// Hook lấy danh sách task
+// Fetch task
 export const useTasks = (
   userId: string,
   status?: string,
@@ -33,7 +33,7 @@ export const useTasks = (
     queryFn: () =>
       fetchTasks(userId, status, priority, deadline, search, page, limit),
     enabled: !!userId,
-    keepPreviousData: true, // giữ lại dữ liệu trang trước
+    keepPreviousData: true,
   });
 };
 

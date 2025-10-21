@@ -1,22 +1,33 @@
-import { defineConfig } from "vite";
+import { defineConfig, configDefaults } from "vitest/config";
 import react from "@vitejs/plugin-react";
-import { configDefaults } from "vitest/config";
 import path from "path";
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"), // hỗ trợ import alias như "@/types"
+      "@": path.resolve(__dirname, "./src"),
     },
   },
   optimizeDeps: {
-    exclude: ["lucide-react"], // tốt nếu lucide-react gây lỗi phân giải
+    exclude: ["lucide-react"],
   },
   test: {
     globals: true,
     environment: "jsdom",
-    setupFiles: "./src/test/setupTests.ts",
+    setupFiles: "./test/setupTests.ts",
+    css: true,
     exclude: [...configDefaults.exclude, "e2e/**"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "lcov"],
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        statements: 80,
+        branches: 70,
+      },
+      reportsDirectory: "./coverage",
+    },
   },
 });

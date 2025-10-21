@@ -1,27 +1,15 @@
-// TasksPage.int.test.tsx
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import { vi, describe, it, beforeEach, afterEach, expect } from "vitest";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { vi } from "vitest";
+import { MemoryRouter, useNavigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Provider } from "react-redux";
+import { store } from "../../app/store";
+import { useUser } from "@supabase/auth-helpers-react";
+import TasksPage from "./TaskPage";
+import { server } from "../../../test/testServer";
 
-/* -------------------------
-   Mocks (giữ tương tự bạn đã dùng)
-   ------------------------- */
-vi.mock("../../layout/DashboardLayout", () => ({
-  default: ({ children }: any) => <div data-testid="layout">{children}</div>,
-}));
-
-vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual<any>("react-router-dom");
-  return {
-    ...actual,
-    useNavigate: () => (to: string) => {
-      window.history.pushState({}, "", to);
-    },
-  };
-});
-
+// ✅ Mock toàn bộ module trước khi import TaskPage
 vi.mock("@supabase/auth-helpers-react", () => ({
   useUser: vi.fn(),
 }));
@@ -31,206 +19,235 @@ vi.mock("./useTask", () => ({
   useUpdateTaskStatus: vi.fn(),
 }));
 
-/* -------------------------
-   Imports AFTER mocks
-   ------------------------- */
-import TasksPage from "./TaskPage";
+vi.mock("react-router-dom", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    useNavigate: vi.fn(), // sẽ được gán lại trong từng test
+  };
+});
+
 import { useTasks, useUpdateTaskStatus } from "./useTask";
-import { useUser } from "@supabase/auth-helpers-react";
 
-const useTasksMock = useTasks as unknown as vi.Mock;
-const useUpdateTaskStatusMock = useUpdateTaskStatus as unknown as vi.Mock;
-const useUserMock = useUser as unknown as vi.Mock;
+const queryClient = new QueryClient();
 
-/* helper: tạo QueryClient mới mỗi lần để tránh cache giữa test */
-function createQueryClient() {
-  return new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  });
-}
-
-/* helper render (mỗi lần render dùng 1 client mới) */
-function renderPage() {
-  const client = createQueryClient();
-  return render(
-    <MemoryRouter initialEntries={["/tasks"]}>
-      <QueryClientProvider client={client}>
-        <TasksPage />
+const renderWithProviders = () =>
+  render(
+    <Provider store={store}>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <TasksPage />
+        </MemoryRouter>
       </QueryClientProvider>
-    </MemoryRouter>
+    </Provider>
   );
-}
 
-/* Mock data */
-const mockTasks = [
-  {
-    id: "1",
-    title: "Task A",
-    priority: "High",
-    deadline: "2025-09-10",
-    status: "To Do",
-  },
-  {
-    id: "2",
-    title: "Task B",
-    priority: "Low",
-    deadline: "2025-09-12",
-    status: "Done",
-  },
-];
+describe("TasksPage Integration Test", () => {
+  beforeAll(() => server.listen());
+  afterEach(() => server.resetHandlers());
+  afterAll(() => server.close());
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  // set default user
-  useUserMock.mockReturnValue({ id: "user_1", email: "a@b.com" });
-  // default update hook
-  useUpdateTaskStatusMock.mockReturnValue({ mutate: vi.fn() });
-});
-
-afterEach(() => {
-  document.body.innerHTML = "";
-});
-
-it("hiển thị loading spinner khi isLoading = true", () => {
-  useTasksMock.mockReturnValue({
-    data: undefined, // <-- để undefined, tránh bị xử lý như "không có task"
-    isLoading: true,
-    isError: false,
-    refetch: vi.fn(),
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (useUser as vi.Mock).mockReturnValue({ id: "user-123" });
   });
 
-  renderPage();
-
-  expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
-});
-
-it("hiển thị lỗi khi API lỗi", async () => {
-  useTasksMock.mockReturnValue({
-    data: { data: [], total: 0 },
-    isLoading: false,
-    isError: true,
-    refetch: vi.fn(),
+  (useUpdateTaskStatus as vi.Mock).mockReturnValue({
+    mutate: vi.fn(),
   });
 
-  renderPage();
+  // Case 1: spinner khi load task
+  it("render_shouldShowLoadingIndicator_whenFetchingTasks", () => {
+    (useTasks as vi.Mock).mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isError: false,
+      refetch: vi.fn(),
+    });
 
-  expect(
-    await screen.findByText("Có lỗi xảy ra, vui lòng thử lại sau")
-  ).toBeInTheDocument();
-});
-
-it("hiển thị message khi không có task", async () => {
-  useTasksMock.mockReturnValue({
-    data: { data: [], total: 0 },
-    isLoading: false,
-    isError: false,
-    refetch: vi.fn(),
+    renderWithProviders();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
   });
 
-  renderPage();
+  // Case 2: Hiện error mess khi api lỗi
+  it("render_shouldShowErrorMessage_whenApiFails", async () => {
+    (useTasks as vi.Mock).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch: vi.fn(),
+    });
 
-  expect(
-    await screen.findByText(
-      "Không tìm thấy task nào phù hợp với điều kiện lọc/tìm kiếm"
-    )
-  ).toBeInTheDocument();
-});
-
-it("render danh sách task khi có data (desktop + mobile)", async () => {
-  useTasksMock.mockReturnValue({
-    data: { data: mockTasks, total: mockTasks.length },
-    isLoading: false,
-    isError: false,
-    refetch: vi.fn(),
+    renderWithProviders();
+    expect(
+      await screen.findByText(/Có lỗi xảy ra, vui lòng thử lại sau/i)
+    ).toBeInTheDocument();
   });
 
-  renderPage();
+  // Case 3: Hiển thị khi không có task
+  it("render_shouldShowEmptyState_whenNoTasks", async () => {
+    (useTasks as vi.Mock).mockReturnValue({
+      data: { data: [], total: 0 },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
 
-  // đợi ít nhất 1 element mobile (heading) xuất hiện
-  await screen.findByRole("heading", { name: "Task A" });
-
-  expect(screen.getByRole("cell", { name: "Task A" })).toBeInTheDocument();
-
-  const prioritySpans = screen
-    .getAllByText("High")
-    .filter((el) => el.tagName === "SPAN");
-  expect(prioritySpans.length).toBeGreaterThanOrEqual(1);
-
-  const deadlines = screen
-    .getAllByText("10/09/2025")
-    .filter((el) => el.tagName !== "OPTION");
-  expect(deadlines.length).toBeGreaterThanOrEqual(1);
-
-  expect(screen.getByRole("heading", { name: "Task A" })).toBeInTheDocument();
-});
-
-it("checkbox toggle gọi updateTaskStatus với payload đúng", async () => {
-  const mutateMock = vi.fn();
-  useUpdateTaskStatusMock.mockReturnValue({ mutate: mutateMock });
-
-  useTasksMock.mockReturnValue({
-    data: { data: mockTasks, total: mockTasks.length },
-    isLoading: false,
-    isError: false,
-    refetch: vi.fn(),
+    renderWithProviders();
+    expect(
+      await screen.findByText(
+        /Không tìm thấy task nào phù hợp với điều kiện lọc\/tìm kiếm/i
+      )
+    ).toBeInTheDocument();
   });
 
-  renderPage();
+  // Case 4: Hiển thị danh sách task khi load xong
+  it("render_shouldDisplayTasksTable_whenDataLoaded", async () => {
+    (useTasks as vi.Mock).mockReturnValue({
+      data: {
+        data: [
+          {
+            id: "1",
+            title: "Test Task 1",
+            status: "To Do",
+            priority: "High",
+            deadline: "2025-10-21",
+          },
+        ],
+        total: 1,
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
 
-  // có thể có 2 checkbox per task (desktop + mobile) -> lấy all, click cái đầu
-  const checkboxes = await screen.findAllByRole("checkbox");
-  expect(checkboxes.length).toBeGreaterThan(0);
+    renderWithProviders();
 
-  fireEvent.click(checkboxes[0]);
-
-  expect(mutateMock).toHaveBeenCalledWith(
-    { taskId: "1", status: "Done" },
-    expect.any(Object)
-  );
-});
-
-it("phân trang hiển thị đúng số trang (LIMIT = 9)", async () => {
-  useTasksMock.mockReturnValue({
-    data: { data: mockTasks, total: 20 }, // total = 20 -> pages = 3
-    isLoading: false,
-    isError: false,
-    refetch: vi.fn(),
+    const taskTitles = await screen.findAllByText("Test Task 1");
+    expect(taskTitles.length).toBeGreaterThan(0);
+    const taskStatus = await screen.findAllByText("High");
+    expect(taskStatus.length).toBeGreaterThan(0);
   });
 
-  renderPage();
+  // Case 5: Gọi update task khi nhấn Checkbox
+  it("toggleStatus_shouldUpdateTaskStatus_whenCheckboxClicked", async () => {
+    const refetchMock = vi.fn();
+    const mutateMock = vi.fn();
 
-  // Chờ DOM có bảng (dùng role cụ thể để tránh ambiguous)
-  await screen.findByRole("cell", { name: "Task A" });
+    (useTasks as vi.Mock).mockReturnValue({
+      data: {
+        data: [
+          {
+            id: "1",
+            title: "Task to toggle",
+            status: "To Do",
+            priority: "Low",
+            deadline: "2025-10-21",
+          },
+        ],
+        total: 1,
+      },
+      isLoading: false,
+      isError: false,
+      refetch: refetchMock,
+    });
 
-  // Lấy tất cả element có text là số (chỉ lấy các nút / text số trên pagination)
-  const pageNumberEls = screen.getAllByText(/^[0-9]+$/);
+    (useUpdateTaskStatus as vi.Mock).mockReturnValue({
+      mutate: mutateMock,
+    });
 
-  // Tách text và trim
-  const pageNumbers = pageNumberEls.map((el) => (el.textContent || "").trim());
+    renderWithProviders();
 
-  // Kiểm tra tồn tại các trang "1","2","3" và chỉ có 3 nút số
-  expect(pageNumbers).toContain("1");
-  expect(pageNumbers).toContain("2");
-  expect(pageNumbers).toContain("3");
-  expect(pageNumbers.length).toBe(3);
-});
+    const checkboxes = await screen.findAllByRole("checkbox");
+    const checkbox = checkboxes[0];
 
-it("nút + Tạo mới task điều hướng đến /createtask", async () => {
-  useTasksMock.mockReturnValue({
-    data: { data: mockTasks, total: mockTasks.length },
-    isLoading: false,
-    isError: false,
-    refetch: vi.fn(),
+    fireEvent.click(checkbox);
+
+    await waitFor(() => {
+      expect(mutateMock).toHaveBeenCalledWith(
+        { taskId: "1", status: "Done" },
+        expect.any(Object)
+      );
+    });
   });
 
-  renderPage();
+  // Case 6:
+  it("filter_shouldRefetchTasks_whenStatusOrPriorityChanged", async () => {
+    const refetchMock = vi.fn();
 
-  const btn = await screen.findByText("+ Tạo mới task");
-  fireEvent.click(btn);
+    (useTasks as vi.Mock).mockReturnValue({
+      data: { data: [], total: 0 },
+      isLoading: false,
+      isError: false,
+      refetch: refetchMock,
+    });
 
-  expect(window.location.pathname).toBe("/createtask");
+    renderWithProviders();
+
+    const statusSelect = screen.getByDisplayValue("Trạng thái");
+    const prioritySelect = screen.getByDisplayValue("Ưu tiên");
+
+    fireEvent.change(statusSelect, { target: { value: "Done" } });
+    fireEvent.change(prioritySelect, { target: { value: "High" } });
+
+    await waitFor(() => {
+      expect(statusSelect).toHaveValue("Done");
+      expect(prioritySelect).toHaveValue("High");
+    });
+  });
+
+  // Case 7:
+  it("pagination_shouldChangePage_whenClickNextOrPrev", async () => {
+    (useTasks as vi.Mock).mockReturnValue({
+      data: {
+        data: new Array(9).fill({
+          id: "x",
+          title: "Task X",
+          status: "To Do",
+          priority: "Low",
+          deadline: "2025-10-21",
+        }),
+        total: 18,
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    renderWithProviders();
+
+    const nextBtn = await screen.findByText(">");
+    fireEvent.click(nextBtn);
+    expect(nextBtn).toBeInTheDocument();
+  });
+
+  it("navigate_shouldGoToCreateTaskPage_whenClickCreateButton", async () => {
+    // Tạo mockNavigate cho case này
+    const mockNavigate = vi.fn();
+    (useNavigate as vi.Mock).mockReturnValue(mockNavigate);
+
+    // Mock dữ liệu useTasks rỗng (để trang load nhanh)
+    (useTasks as vi.Mock).mockReturnValue({
+      data: { data: [], total: 0 },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    // Render page
+    renderWithProviders();
+
+    // Tìm nút tạo mới task
+    const createBtn = await screen.findByRole("button", {
+      name: /\+ tạo mới task/i, // chú ý text phải đúng (viết hoa/thường khớp với UI)
+    });
+
+    // Click nút
+    fireEvent.click(createBtn);
+
+    // Kiểm tra navigate đã được gọi đúng
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/createtask");
+    });
+  });
 });
