@@ -227,14 +227,14 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-red-600 text-white py-2 rounded font-semibold hover:bg-blue-700 disabled:opacity-50"
+          className="w-full bg-blue-600 text-white py-2 rounded font-semibold hover:bg-blue-700 disabled:opacity-50"
         >
           {loading ? "Đang đăng nhập..." : "Đăng nhập"}
         </button>
 
         <p className="text-center text-sm mt-4">
           Chưa có tài khoản?{" "}
-          <Link to="/register" className="text-red-600 underline">
+          <Link to="/register" className="text-blue-600 underline">
             Đăng ký
           </Link>
         </p>

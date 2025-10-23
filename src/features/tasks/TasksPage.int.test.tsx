@@ -9,7 +9,6 @@ import { useUser } from "@supabase/auth-helpers-react";
 import TasksPage from "./TaskPage";
 import { server } from "../../../test/testServer";
 
-// ✅ Mock toàn bộ module trước khi import TaskPage
 vi.mock("@supabase/auth-helpers-react", () => ({
   useUser: vi.fn(),
 }));
@@ -23,8 +22,7 @@ vi.mock("react-router-dom", async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,
-    useNavigate: vi.fn(), // sẽ được gán lại trong từng test
-  };
+    useNavigate: vi.fn(), 
 });
 
 import { useTasks, useUpdateTaskStatus } from "./useTask";

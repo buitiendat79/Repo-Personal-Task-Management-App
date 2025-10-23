@@ -1,12 +1,9 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import TaskForm from "../TaskForm";
-import { server } from "../../../test/testServer";
-import { http, HttpResponse } from "msw";
 import { vi } from "vitest";
 import { renderWithClient } from "../../../test/utils/renderWithClient";
 
-// Mock useNavigate & notify
 const navigateMock = vi.fn();
 vi.mock("react-router-dom", async (importOriginal) => {
   const actual: any = await importOriginal();
@@ -24,7 +21,6 @@ vi.mock("../../../utils/notify", () => ({
   notifyError: (msg: string) => notifyError(msg),
 }));
 
-// Mock react-datepicker
 vi.mock("react-datepicker", () => ({
   __esModule: true,
   default: ({ onChange, selected, name }: any) => (
@@ -38,54 +34,83 @@ vi.mock("react-datepicker", () => ({
   ),
 }));
 
+const mockCreateCalled = vi.fn();
+const mockUpdateCalled = vi.fn();
+const mockDeleteCalled = vi.fn();
+
 vi.mock("../../features/tasks/useTask", () => ({
   useCreateTask: () => ({
-    mutate: () => notifySuccess("Tạo task thành công!"),
+    createTask: (payload: any, opts?: any) => {
+      mockCreateCalled(payload);
+      opts?.onSuccess?.();
+    },
     isPending: false,
   }),
   useUpdateTask: () => ({
-    mutate: () => notifySuccess("Cập nhật task thành công!"),
+    updateTask: (taskId: string, payload: any) => {
+      mockUpdateCalled(taskId, payload);
+      return Promise.resolve();
+    },
     isPending: false,
   }),
   useDeleteTask: () => ({
-    mutate: () => notifySuccess("Xoá task thành công!"),
+    deleteTask: (taskId: string, opts?: any) => {
+      mockDeleteCalled(taskId);
+      opts?.onSuccess?.();
+      opts?.onSettled?.();
+    },
     isPending: false,
   }),
 }));
 
+// Crreate Mode
 describe("TaskForm - Create Mode", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
+  // Case 1: Hiển thị form CreateTask
   it("render_shouldDisplayCreateTitle_whenModeIsCreate", () => {
     renderWithClient(<TaskForm mode="create" />);
     expect(screen.getByText(/tạo mới task/i)).toBeInTheDocument();
   });
 
-  it("submit_shouldCallCreateAPI_whenFormValid", async () => {
+  // Case 2: Hiển thị thông báo tạo task thành công
+  it("submit_shouldShowNotifySuccess_whenFormValid", async () => {
     // Arrange
     renderWithClient(<TaskForm mode="create" />);
     const user = userEvent.setup();
-    const titleInput = screen.getByLabelText(/tên task/i);
-    const descInput = screen.getByLabelText(/mô tả/i);
-    const deadlineInput = screen.getByLabelText(/deadline/i);
-    const prioritySelect = screen.getByLabelText(/ưu tiên/i);
+
+    const titleInput = screen.getByLabelText(/tên task/i) as HTMLInputElement;
+    const descInput = screen.getByLabelText(/mô tả/i) as HTMLTextAreaElement;
+    const deadlineInput = screen.getByLabelText(
+      /deadline/i
+    ) as HTMLInputElement;
+    const prioritySelect = screen.getByLabelText(
+      /ưu tiên/i
+    ) as HTMLSelectElement;
     const submitBtn = screen.getByRole("button", { name: /tạo mới/i });
 
-    // Act
-    await user.type(titleInput, "New Task");
-    await user.type(descInput, "Some description");
-    await user.type(deadlineInput, "2025-10-20");
+    fireEvent.change(titleInput, { target: { value: "New Task" } });
+    fireEvent.change(descInput, { target: { value: "Some description" } });
+    fireEvent.change(deadlineInput, { target: { value: "2025-10-20" } });
     await user.selectOptions(prioritySelect, "High");
+
+    await waitFor(() => {
+      expect(submitBtn).toBeEnabled();
+    });
+
     await user.click(submitBtn);
 
-    // Assert
-    // await waitFor(() => {
-    //   expect(notifySuccess).toHaveBeenCalledWith("Tạo task thành công!");
-    // });
+    await waitFor(() => {
+      expect(notifySuccess).toHaveBeenCalledWith(
+        expect.stringMatching(/tạo task thành công/i)
+      );
+      expect(navigateMock).toHaveBeenCalledWith("/tasks");
+    });
   });
 
+  // Case 3: Hiển thị lỗi thiếu tên task
   it("submit_shouldShowError_whenTitleMissing", async () => {
     // Arrange
     renderWithClient(<TaskForm mode="create" />);
@@ -96,8 +121,6 @@ describe("TaskForm - Create Mode", () => {
     await user.click(submitBtn);
 
     // Assert
-    await user.click(submitBtn);
-
     await waitFor(() => {
       expect(
         screen.getByText((text) =>
@@ -107,12 +130,16 @@ describe("TaskForm - Create Mode", () => {
     });
   });
 
+  // Case 4: Hiển thị thông báo lỗi api
   it("submit_shouldShowNotifyError_whenAPIFails", async () => {
     // Arrange
-    server.use(http.post("/tasks", () => HttpResponse.error()));
+    mockCreateMutate.mockImplementation(() => {
+      throw new Error("API failed");
+    });
 
     renderWithClient(<TaskForm mode="create" />);
     const user = userEvent.setup();
+
     const titleInput = screen.getByLabelText(/tên task/i);
     const descInput = screen.getByLabelText(/mô tả/i);
     const deadlineInput = screen.getByLabelText(/deadline/i);
@@ -133,6 +160,7 @@ describe("TaskForm - Create Mode", () => {
   });
 });
 
+// Edit Mode
 describe("TaskForm - Edit Mode", () => {
   const defaultValues = {
     status: "In Progress",
@@ -147,27 +175,60 @@ describe("TaskForm - Edit Mode", () => {
     vi.clearAllMocks();
   });
 
+  // Case 1: Hiển thị form Cập nhật task
   it("render_shouldDisplayEditTitle_whenModeIsEdit", () => {
-    render(<TaskForm mode="edit" defaultValues={defaultValues} />);
+    // Arrange
+    renderWithClient(<TaskForm mode="edit" defaultValues={defaultValues} />);
+
+    // Assert
     expect(screen.getByText(/cập nhật task/i)).toBeInTheDocument();
   });
 
-  it("delete_shouldShowSuccessNotify_whenDeleteAPIResolved", async () => {
+  // Case 2: Hiển thị thông báo cập nhật task thành công
+  it("submit_shouldShowNotifySuccess_whenUpdateAPISuccess", async () => {
     // Arrange
-    server.use(
-      http.delete("/tasks/1", () => HttpResponse.json({ success: true }))
-    );
+    renderWithClient(<TaskForm mode="edit" defaultValues={defaultValues} />);
+    const user = userEvent.setup();
 
-    render(<TaskForm mode="edit" defaultValues={defaultValues} />);
+    const titleInput = screen.getByLabelText(/tên task/i);
+    const submitBtn = screen.getByRole("button", { name: /cập nhật/i });
+
+    // Act
+    await user.clear(titleInput);
+    await user.type(titleInput, "Updated Title");
+    await user.click(submitBtn);
+
+    // Assert
+    await waitFor(() => {
+      expect(mockUpdateMutate).toHaveBeenCalled();
+      expect(notifySuccess).toHaveBeenCalledWith(
+        expect.stringMatching(/cập nhật task thành công/i)
+      );
+      expect(navigateMock).toHaveBeenCalledWith("/tasks");
+    });
+  });
+
+  // Case 3: Hiển thị thông báo xóa task khi nhấn "delete"
+  it("delete_shouldShowNotifySuccess_whenUserConfirmsDelete", async () => {
+    // Arrange
+    renderWithClient(<TaskForm mode="edit" defaultValues={defaultValues} />);
     const user = userEvent.setup();
     const deleteBtn = screen.getByRole("button", { name: /xoá task/i });
 
     // Act
     await user.click(deleteBtn);
 
+    // modal confirm shows “Xoá” button again
+    const confirmBtn = await screen.findByRole("button", { name: /^xoá$/i });
+    await user.click(confirmBtn);
+
     // Assert
     await waitFor(() => {
-      expect(notifySuccess).toHaveBeenCalledWith("Xoá task thành công!");
+      expect(mockDeleteMutate).toHaveBeenCalled();
+      expect(notifySuccess).toHaveBeenCalledWith(
+        expect.stringMatching(/xoá task thành công/i)
+      );
+      expect(navigateMock).toHaveBeenCalledWith("/tasks");
     });
   });
 });
